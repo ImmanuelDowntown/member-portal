@@ -1,0 +1,2 @@
+/** @type {import('tailwindcss').Config} */
+export default {content:["./index.html","./src/**/*.{ts,tsx}"],theme:{extend:{colors:{bg:"var(--bg)",surface:"var(--surface)",text:"var(--text)",text2:"var(--text2)",meta:"var(--meta)",border:"var(--border)",accent:"var(--accent)",accentHover:"var(--accentHover)"},fontFamily:{sans:['"proxima-nova"','system-ui','sans-serif'],body:['"nexa"','sans-serif']}},container:{center:true,padding:"1rem"}},plugins:[]}

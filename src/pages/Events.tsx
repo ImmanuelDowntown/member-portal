@@ -1,0 +1,1 @@
+export default function Events(){return(<div className="container py-10"><h1 className="text-2xl font-semibold text-accent">Events</h1><p className="text-text2 mt-2">Calendar and upcoming gatherings.</p></div>);}

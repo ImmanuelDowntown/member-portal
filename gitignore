@@ -1,0 +1,39 @@
+# === Node / React / Vite ===
+node_modules/
+dist/
+build/
+.cache/
+.vite/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Lockfiles (optional; keep if your team standardizes on one)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# === Environment files ===
+.env
+.env.*
+!.env.example
+
+# === OS / Editor ===
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# === Firebase / Emulators ===
+.firebase/
+storage-debug.log
+
+# === Next / Turbo (harmless if unused) ===
+.next/
+.turbo/
+
+# === Mac resource forks ===
+._*

@@ -1,0 +1,1 @@
+export default function Profile(){return(<div className="container py-10"><h1 className="text-2xl font-semibold text-accent">Profile</h1><p className="text-text2 mt-2">Manage your account details.</p></div>);}
