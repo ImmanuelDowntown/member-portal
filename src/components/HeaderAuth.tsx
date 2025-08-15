@@ -39,17 +39,13 @@ export default function HeaderAuth(){
   }, [user]);
 
   return (
-    <header className="w-full border-b border-border bg-[var(--bg)]">
+    <header data-app-header className="w-full border-b border-border bg-[var(--bg)]">
       <div className="container py-2 md:py-3 grid grid-cols-2 md:grid-cols-3 grid-rows-2 md:grid-rows-1 items-center gap-x-3 gap-y-2">
         {/* Logo */}
         <div className="flex items-center min-w-0 col-span-2 md:col-span-1">
           <Link to="/dashboard" aria-label="Immanuel Members Home" className="shrink-0">
             <img src={mainLogo} alt="Immanuel Downtown" className="h-8 sm:h-10 md:h-12 lg:h-14 w-auto object-contain" />
           </Link>
-          <div className="ml-3 hidden md:block leading-tight">
-            <div className="font-semibold tracking-wide text-base">IMMANUEL<span className="opacity-80">DOWNTOWN</span></div>
-            <div className="text-xs text-text2">Honest | Deep | Faithful</div>
-          </div>
         </div>
 
         {/* Nav */}
