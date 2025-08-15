@@ -41,10 +41,11 @@ export default function HeaderAuth(){
   return (
     <header className="w-full border-b border-border bg-[var(--bg)]">
       <div className="container py-2 md:py-3 grid grid-cols-2 md:grid-cols-3 grid-rows-2 md:grid-rows-1 items-center gap-x-3 gap-y-2">
-        {/* Logo only */}
+        {/* Logo only (bigger on mobile) */}
         <div className="flex items-center min-w-0 col-span-2 md:col-span-1">
           <Link to="/dashboard" aria-label="Immanuel Members Home" className="shrink-0">
-            <img src={mainLogo} alt="Immanuel Downtown" className="h-8 sm:h-10 md:h-12 lg:h-14 w-auto object-contain" />
+            {/* Increased base height; scales up at larger breakpoints */}
+            <img src={mainLogo} alt="Immanuel Downtown" className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto object-contain" />
           </Link>
         </div>
 
@@ -55,16 +56,30 @@ export default function HeaderAuth(){
           {isAdmin && <NavLink to="/admin/seed-groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Admin</NavLink>}
         </nav>
 
-        {/* Actions */}
+        {/* Actions (smaller buttons on mobile) */}
         <div className="col-span-2 md:col-span-1 order-3 md:order-none flex justify-end items-center gap-2">
           {user ? (
             <>
               <span className="text-xs sm:text-sm text-text2 hidden sm:inline">Hi{greetingName ? `, ${greetingName}` : ""}</span>
-              <Link to="/profile" className="btn btn-outline btn-sm sm:btn-md">Profile</Link>
-              <button className="btn btn-outline btn-sm sm:btn-md" onClick={() => signOut(auth)}>Sign out</button>
+              <Link
+                to="/profile"
+                className="btn btn-outline text-xs px-3 py-1 sm:text-sm sm:px-4 sm:py-1.5 md:px-5 md:py-2"
+              >
+                Profile
+              </Link>
+              <button
+                className="btn btn-outline text-xs px-3 py-1 sm:text-sm sm:px-4 sm:py-1.5 md:px-5 md:py-2"
+                onClick={() => signOut(auth)}
+              >
+                Sign out
+              </button>
             </>
           ) : (
-            loc.pathname !== "/login" && <Link to="/login" className="btn btn-outline btn-sm sm:btn-md">Sign in</Link>
+            loc.pathname !== "/login" && (
+              <Link to="/login" className="btn btn-outline text-xs px-3 py-1 sm:text-sm sm:px-4 sm:py-1.5 md:px-5 md:py-2">
+                Sign in
+              </Link>
+            )
           )}
         </div>
       </div>
