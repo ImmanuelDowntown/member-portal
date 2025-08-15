@@ -44,50 +44,49 @@ export default function HeaderAuth(){
 
   return (
     <header className="w-full border-b border-border bg-[var(--bg)]">
+      {/* Mobile: 2 rows -> Row1: Logo (left) + Hamburger (right); Row2: centered nav
+          Desktop (md+): 1 row -> Logo | Nav | Actions */}
       <div className="container py-2 md:py-3 grid grid-cols-2 md:grid-cols-3 grid-rows-2 md:grid-rows-1 items-center gap-x-3 gap-y-2">
-        {/* Logo only (comfortable mobile size) */}
-        <div className="flex items-center min-w-0 col-span-2 md:col-span-1">
+
+        {/* Row1 Col1: Logo */}
+        <div className="col-start-1 row-start-1 md:col-span-1 flex items-center min-w-0">
           <Link to="/dashboard" aria-label="Immanuel Members Home" className="shrink-0">
             <img src={mainLogo} alt="Immanuel Downtown" className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto object-contain" />
           </Link>
         </div>
 
-        {/* Nav */}
-        <nav className="col-span-2 md:col-span-1 order-2 md:order-none flex justify-center gap-4 text-sm">
+        {/* Row1 Col2: Mobile hamburger (hidden on md+) */}
+        <div className="col-start-2 row-start-1 md:hidden flex justify-end">
+          <button
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+            className="p-2 rounded-md border border-border/70 bg-surface/40 hover:bg-surface/60 active:scale-[0.98] transition"
+            onClick={() => setMenuOpen(o => !o)}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Row2 (mobile): Centered nav  |  Row1 col2 (md+): Centered nav */}
+        <nav className="col-span-2 row-start-2 md:row-start-1 md:col-span-1 flex justify-center gap-4 text-sm">
           <NavLink to="/dashboard" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Dashboard</NavLink>
           <NavLink to="/groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Groups</NavLink>
           {isAdmin && <NavLink to="/admin/seed-groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Admin</NavLink>}
         </nav>
 
-        {/* Actions: desktop shows buttons; mobile shows hamburger */}
-        <div className="col-span-2 md:col-span-1 order-3 md:order-none flex justify-end items-center gap-2">
-          {/* Desktop / md+ */}
-          <div className="hidden md:flex items-center gap-2">
-            {user ? (
-              <>
-                <span className="text-sm text-text2">Hi{greetingName ? `, ${greetingName}` : ""}</span>
-                <Link to="/profile" className="btn btn-outline btn-md">Profile</Link>
-                <button className="btn btn-outline btn-md" onClick={() => signOut(auth)}>Sign out</button>
-              </>
-            ) : (
-              loc.pathname !== "/login" && <Link to="/login" className="btn btn-outline btn-md">Sign in</Link>
-            )}
-          </div>
-
-          {/* Mobile / < md: hamburger only */}
-          <div className="md:hidden">
-            <button
-              aria-label="Open menu"
-              aria-expanded={menuOpen}
-              className="p-2 rounded-md border border-border/70 bg-surface/40 hover:bg-surface/60 active:scale-[0.98] transition"
-              onClick={() => setMenuOpen(o => !o)}
-            >
-              {/* Hamburger icon */}
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </button>
-          </div>
+        {/* Row2 (mobile hidden): Actions for md+ only */}
+        <div className="hidden md:flex md:col-start-3 md:row-start-1 justify-end items-center gap-2">
+          {user ? (
+            <>
+              <span className="text-sm text-text2">Hi{greetingName ? `, ${greetingName}` : ""}</span>
+              <Link to="/profile" className="btn btn-outline btn-md">Profile</Link>
+              <button className="btn btn-outline btn-md" onClick={() => signOut(auth)}>Sign out</button>
+            </>
+          ) : (
+            loc.pathname !== "/login" && <Link to="/login" className="btn btn-outline btn-md">Sign in</Link>
+          )}
         </div>
       </div>
 
