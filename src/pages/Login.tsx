@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import PostLoginRedirect from "@/components/auth/PostLoginRedirect";
+import Header from "@/components/Header";
 
 export default function Login() {
   const { login, signInWithGoogle } = useAuth();

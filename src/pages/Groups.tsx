@@ -1,22 +1,19 @@
+/**
+ * Groups.tsx
+ * Uses a single global header (HeaderAuth) mounted in App/Layout.
+ * Shows only "Your Groups" with a "View More Groups" button.
+ */
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { addDoc, collection, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore"
 import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/lib/firebase"
-import HeaderAuth from "@/components/HeaderAuth"
 import defaultGroups, { AppGroup } from "@/data/defaultGroups"
 
 type Membership = { groupId: string, role?: "admin"|"member" }
 
 export default function Groups(){
-  return (
-    <>
-      {/* Hide any app-wide header (e.g., HeaderAuth mounted above routes) */}
-      <style>{`header:first-of-type{display:none !important;}`}</style>
-      <HeaderAuth />
-      <GroupsBody />
-    </>
-  )
+  return <GroupsBody />
 }
 
 function GroupsBody(){
@@ -25,7 +22,6 @@ function GroupsBody(){
   const [requesting, setRequesting] = useState<Record<string, boolean>>({})
   const [requested, setRequested] = useState<Record<string, boolean>>({})
 
-  // Load the user's current memberships
   useEffect(() => {
     if (!user) { setMyGroupIds([]); return }
     const ref = collection(db, "users", user.uid, "memberships")
@@ -36,19 +32,14 @@ function GroupsBody(){
     return () => unsub()
   }, [user])
 
-  // Compute parents and children lists
   const parents = useMemo(() => defaultGroups.filter(g => !g.parentId), [])
   const childrenByParent = (id: string) => defaultGroups.filter(g => g.parentId === id)
-
-  // Only show user's groups in this view
   const myGroups = useMemo(() => defaultGroups.filter(g => myGroupIds.includes(g.slug)), [myGroupIds])
 
   async function requestMembership(g: AppGroup) {
     if (!user) { alert("Please sign in to request membership."); return }
     try {
       setRequesting(prev => ({ ...prev, [g.slug]: true }))
-
-      // 1) Create/merge a membership request under the group
       await setDoc(doc(db, "groups", g.slug, "membershipRequests", user.uid), {
         uid: user.uid,
         email: user.email,
@@ -56,15 +47,11 @@ function GroupsBody(){
         createdAt: serverTimestamp(),
         status: "pending",
       }, { merge: true })
-
-      // 2) (Optional) record it under the user
       await setDoc(doc(db, "users", user.uid, "membershipRequests", g.slug), {
         groupId: g.slug,
         createdAt: serverTimestamp(),
         status: "pending",
       }, { merge: true })
-
-      // 3) Notify group admins
       await addDoc(collection(db, "notifications"), {
         groupId: g.slug,
         groupName: g.name,
@@ -73,7 +60,6 @@ function GroupsBody(){
         body: `${user.displayName || user.email} requested to join ${g.name}`,
         createdAt: serverTimestamp(),
       })
-
       setRequested(prev => ({ ...prev, [g.slug]: true }))
     } catch (e) {
       console.error(e)
@@ -101,7 +87,6 @@ function GroupsBody(){
         <h3 className="text-lg font-medium">{g.name}</h3>
         {g.description && <p className="text-sm text-text2 mt-1">{g.description}</p>}
         <div className="mt-3 flex flex-wrap gap-2">
-          {/* If parent, show children */}
           {isParent && kids.map(c => (
             myGroupIds.includes(c.slug) ? (
               <Link key={c.slug} to={`/groups/${c.slug}`} className="btn btn-outline btn-sm">Open {c.name}</Link>
@@ -117,7 +102,6 @@ function GroupsBody(){
             )
           ))}
         </div>
-        {/* If this group itself is joinable (no parent) */}
         {!isParent && (
           <div className="mt-3">
             {mine ? (
@@ -139,7 +123,6 @@ function GroupsBody(){
 
   return (
     <div className="container py-8 md:py-10">
-      {/* Your groups only */}
       <div className="mt-0">
         <Section title="Your Groups">
           {myGroups.length === 0 ? (
@@ -153,7 +136,6 @@ function GroupsBody(){
                   </div>
                 )
               ))}
-              {/* Include top-level groups with no children that the user is in */}
               {defaultGroups
                 .filter(g => !g.parentId && childrenByParent(g.slug).length === 0 && myGroupIds.includes(g.slug))
                 .map(g => (
