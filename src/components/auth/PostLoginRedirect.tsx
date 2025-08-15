@@ -3,10 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
- * PostLoginRedirect
- * Place this in your Login page. When a user becomes signed-in,
- * it will navigate them to the page they attempted to visit (location.state.from)
- * or to "/dashboard" by default.
+ * Redirects a signed-in user to their intended page or /dashboard by default.
+ * Place this component at the top of your Login page.
  */
 export default function PostLoginRedirect() {
   const { user } = useAuth();
