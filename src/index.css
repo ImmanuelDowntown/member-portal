@@ -1,16 +1,9 @@
-:root{--bg:#282F36;--surface:#313944;--text:#697680;--text2:#9AA6AF;--meta:#A6B0B9;--border:#3A444C;--accent:#EBE6D9;--accentHover:#E3CB61;--hero-heading:#E3CB61}
-@tailwind base;@tailwind components;@tailwind utilities;
-:root{color-scheme:dark}html,body,#root{height:100%}
-body{font-family:"nexa",sans-serif;font-weight:100;color:var(--text);background-color:var(--bg);margin:0;padding:0}
-a{@apply text-accent}a:hover{@apply underline}hr{border:0;border-top:1px solid var(--border);margin:2rem 0}
-.btn{@apply inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-none border border-border}
-.btn-primary{@apply bg-accent text-bg border-accent}.btn-primary:hover{@apply bg-accentHover border-accentHover}
-.btn-outline{@apply text-accent bg-transparent border-accent}.btn-outline:hover{@apply bg-surface}
-.input{@apply bg-surface border border-border text-text placeholder-meta px-3 py-2 rounded-none}
-.input:focus{outline:2px solid var(--accentHover);outline-offset:2px}
-.navlink{text-decoration:none;color:var(--text);transition:opacity .15s} .navlink:hover{opacity:.8}.navlink.active{color:var(--accent)}
-.text-hero-heading{color:var(--hero-heading)}.container{width:100%;max-width:1120px;margin:0 auto;padding-left:1rem;padding-right:1rem}
-html { scrollbar-gutter: stable; }
-@supports not (scrollbar-gutter: stable) {
-  html { overflow-y: scroll; }
+/* Safe-area padding for iOS notch when app is installed (standalone) */
+@media (display-mode: standalone) {
+  [data-app-header] {
+    /* Modern iOS */
+    padding-top: env(safe-area-inset-top);
+    /* Older iOS fallback */
+    padding-top: constant(safe-area-inset-top);
+  }
 }
