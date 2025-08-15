@@ -1,0 +1,114 @@
+// Firestore security rules — Church App
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Super admin: users listed in /admins/{uid}
+    function isSuperAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(uid()));
+    }
+
+    // Group admin: users listed in /groups/{groupId}/groupAdmins/{uid}
+    function isGroupAdmin(groupId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/groups/$(groupId)/groupAdmins/$(uid()));
+    }
+
+    // ---------- Groups root
+    match /groups/{groupId} {
+      // Anyone signed in can read groups (Explore, Group Detail)
+      allow read: if isSignedIn();
+
+      // Only SUPER admins can create/update/delete groups
+      allow create, update, delete: if isSuperAdmin();
+
+      // Members subcollection
+      match /members/{memberUid} {
+        // Readable to signed-in users (optional: tighten to admins only if desired)
+        allow read: if isSignedIn();
+        // Writable by group admins or super admins
+        allow write: if isGroupAdmin(groupId) || isSuperAdmin();
+      }
+
+      // Group admins subcollection
+      match /groupAdmins/{adminUid} {
+        // Group admins and super admins can read the list
+        allow read: if isGroupAdmin(groupId) || isSuperAdmin();
+        // Only SUPER admins can grant/revoke group admins
+        allow write: if isSuperAdmin();
+      }
+
+      // Membership requests under each group
+      match /membershipRequests/{requestUid} {
+        // User can read their own request; group/super admins can read all
+        allow read: if isSignedIn() && (
+          requestUid == uid() ||
+          isGroupAdmin(groupId) ||
+          isSuperAdmin()
+        );
+        // User can create/cancel their own; admins can manage any
+        allow create, update, delete: if isSignedIn() && (
+          requestUid == uid() ||
+          isGroupAdmin(groupId) ||
+          isSuperAdmin()
+        );
+      }
+
+      // Group events / audit log
+      match /groupEvents/{eventId} {
+        // Viewable by group admins and super admins
+        allow read: if isGroupAdmin(groupId) || isSuperAdmin();
+        // Writes typically come from Cloud Functions (admin SDK bypasses rules),
+        // but allow admins to write if ever needed from the client.
+        allow write: if isGroupAdmin(groupId) || isSuperAdmin();
+      }
+    }
+
+    // ---------- Users (per-user data)
+    match /users/{userUid} {
+      // Users can read & write their own profile
+      allow read, create, update, delete: if isSignedIn() && userUid == uid();
+
+      // Memberships mirror (used when approving)
+      match /memberships/{groupId} {
+        // Owner can read; group/super admins can read/write when approving/removing
+        allow read, write: if isSignedIn() && (
+          userUid == uid() ||
+          isGroupAdmin(groupId) ||
+          isSuperAdmin()
+        );
+      }
+
+      // User-scoped requests mirror (optional)
+      match /membershipRequests/{groupId} {
+        allow read, write, delete: if isSignedIn() && (
+          userUid == uid() ||
+          isGroupAdmin(groupId) ||
+          isSuperAdmin()
+        );
+      }
+    }
+
+    // ---------- Super admin registry
+    match /admins/{adminUid} {
+      // IMPORTANT: allow a signed-in user to read their OWN admin doc so the guard can verify.
+      // Super admins can read any for management UIs.
+      allow read: if isSignedIn() && (adminUid == uid() || isSuperAdmin());
+
+      // Only super admins may create/delete/modify admin docs
+      allow write: if isSuperAdmin();
+    }
+
+    // ---------- Default deny
+    // (Any path not matched above is denied by default.)
+  }
+}
