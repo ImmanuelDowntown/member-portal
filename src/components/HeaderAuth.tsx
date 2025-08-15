@@ -39,9 +39,9 @@ export default function HeaderAuth(){
   }, [user]);
 
   return (
-    <header data-app-header className="w-full border-b border-border bg-[var(--bg)]">
+    <header className="w-full border-b border-border bg-[var(--bg)]">
       <div className="container py-2 md:py-3 grid grid-cols-2 md:grid-cols-3 grid-rows-2 md:grid-rows-1 items-center gap-x-3 gap-y-2">
-        {/* Logo */}
+        {/* Logo only */}
         <div className="flex items-center min-w-0 col-span-2 md:col-span-1">
           <Link to="/dashboard" aria-label="Immanuel Members Home" className="shrink-0">
             <img src={mainLogo} alt="Immanuel Downtown" className="h-8 sm:h-10 md:h-12 lg:h-14 w-auto object-contain" />
@@ -60,6 +60,7 @@ export default function HeaderAuth(){
           {user ? (
             <>
               <span className="text-xs sm:text-sm text-text2 hidden sm:inline">Hi{greetingName ? `, ${greetingName}` : ""}</span>
+              <Link to="/profile" className="btn btn-outline btn-sm sm:btn-md">Profile</Link>
               <button className="btn btn-outline btn-sm sm:btn-md" onClick={() => signOut(auth)}>Sign out</button>
             </>
           ) : (
