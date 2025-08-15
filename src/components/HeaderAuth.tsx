@@ -16,6 +16,7 @@ export default function HeaderAuth(){
   const { user, isAdmin } = useAuth();
   const loc = useLocation();
   const [greetingName, setGreetingName] = useState<string>("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -38,13 +39,15 @@ export default function HeaderAuth(){
     return () => { isMounted = false; };
   }, [user]);
 
+  // Close mobile menu on route change
+  useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
+
   return (
     <header className="w-full border-b border-border bg-[var(--bg)]">
       <div className="container py-2 md:py-3 grid grid-cols-2 md:grid-cols-3 grid-rows-2 md:grid-rows-1 items-center gap-x-3 gap-y-2">
-        {/* Logo only (bigger on mobile) */}
+        {/* Logo only (comfortable mobile size) */}
         <div className="flex items-center min-w-0 col-span-2 md:col-span-1">
           <Link to="/dashboard" aria-label="Immanuel Members Home" className="shrink-0">
-            {/* Increased base height; scales up at larger breakpoints */}
             <img src={mainLogo} alt="Immanuel Downtown" className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto object-contain" />
           </Link>
         </div>
@@ -56,33 +59,73 @@ export default function HeaderAuth(){
           {isAdmin && <NavLink to="/admin/seed-groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Admin</NavLink>}
         </nav>
 
-        {/* Actions (smaller buttons on mobile) */}
+        {/* Actions: desktop shows buttons; mobile shows hamburger */}
         <div className="col-span-2 md:col-span-1 order-3 md:order-none flex justify-end items-center gap-2">
-          {user ? (
-            <>
-              <span className="text-xs sm:text-sm text-text2 hidden sm:inline">Hi{greetingName ? `, ${greetingName}` : ""}</span>
-              <Link
-                to="/profile"
-                className="btn btn-outline text-xs px-3 py-1 sm:text-sm sm:px-4 sm:py-1.5 md:px-5 md:py-2"
-              >
-                Profile
-              </Link>
-              <button
-                className="btn btn-outline text-xs px-3 py-1 sm:text-sm sm:px-4 sm:py-1.5 md:px-5 md:py-2"
-                onClick={() => signOut(auth)}
-              >
-                Sign out
-              </button>
-            </>
-          ) : (
-            loc.pathname !== "/login" && (
-              <Link to="/login" className="btn btn-outline text-xs px-3 py-1 sm:text-sm sm:px-4 sm:py-1.5 md:px-5 md:py-2">
-                Sign in
-              </Link>
-            )
-          )}
+          {/* Desktop / md+ */}
+          <div className="hidden md:flex items-center gap-2">
+            {user ? (
+              <>
+                <span className="text-sm text-text2">Hi{greetingName ? `, ${greetingName}` : ""}</span>
+                <Link to="/profile" className="btn btn-outline btn-md">Profile</Link>
+                <button className="btn btn-outline btn-md" onClick={() => signOut(auth)}>Sign out</button>
+              </>
+            ) : (
+              loc.pathname !== "/login" && <Link to="/login" className="btn btn-outline btn-md">Sign in</Link>
+            )}
+          </div>
+
+          {/* Mobile / < md: hamburger only */}
+          <div className="md:hidden">
+            <button
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+              className="p-2 rounded-md border border-border/70 bg-surface/40 hover:bg-surface/60 active:scale-[0.98] transition"
+              onClick={() => setMenuOpen(o => !o)}
+            >
+              {/* Hamburger icon */}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Mobile menu overlay */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-50">
+          <button
+            aria-label="Close menu"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setMenuOpen(false)}
+          />
+          <div className="absolute top-2 right-2 w-64 rounded-xl border border-border bg-[var(--bg)] shadow-xl p-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-text2">Menu</div>
+              <button
+                className="p-2 rounded-md hover:bg-surface/60"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Close"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="mt-2 border-t border-border/60 pt-2 grid gap-2">
+              {user ? (
+                <>
+                  <Link to="/profile" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Profile</Link>
+                  {isAdmin && <Link to="/admin/seed-groups" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Admin</Link>}
+                  <button className="btn btn-outline btn-sm" onClick={() => { setMenuOpen(false); signOut(auth); }}>Sign out</button>
+                </>
+              ) : (
+                loc.pathname !== "/login" && <Link to="/login" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Sign in</Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
