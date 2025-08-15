@@ -39,23 +39,20 @@ export default function HeaderAuth(){
     return () => { isMounted = false; };
   }, [user]);
 
-  // Close mobile menu on route change
   useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
 
   return (
     <header className="w-full border-b border-border bg-[var(--bg)]">
-      {/* Mobile: 2 rows -> Row1: Logo (left) + Hamburger (right); Row2: centered nav
-          Desktop (md+): 1 row -> Logo | Nav | Actions */}
+      {/* Mobile: Row1 logo + hamburger; Row2 centered nav. Desktop: single row. */}
       <div className="container py-2 md:py-3 grid grid-cols-2 md:grid-cols-3 grid-rows-2 md:grid-rows-1 items-center gap-x-3 gap-y-2">
-
-        {/* Row1 Col1: Logo */}
+        {/* Logo (30% larger on mobile vs the previous h-10) */}
         <div className="col-start-1 row-start-1 md:col-span-1 flex items-center min-w-0">
           <Link to="/dashboard" aria-label="Immanuel Members Home" className="shrink-0">
-            <img src={mainLogo} alt="Immanuel Downtown" className="h-10 sm:h-12 md:h-14 lg:h-16 w-auto object-contain" />
+            <img src={mainLogo} alt="Immanuel Downtown" className="h-14 sm:h-12 md:h-14 lg:h-16 w-auto object-contain" />
           </Link>
         </div>
 
-        {/* Row1 Col2: Mobile hamburger (hidden on md+) */}
+        {/* Mobile hamburger (top-right) */}
         <div className="col-start-2 row-start-1 md:hidden flex justify-end">
           <button
             aria-label="Open menu"
@@ -69,14 +66,14 @@ export default function HeaderAuth(){
           </button>
         </div>
 
-        {/* Row2 (mobile): Centered nav  |  Row1 col2 (md+): Centered nav */}
+        {/* Nav */}
         <nav className="col-span-2 row-start-2 md:row-start-1 md:col-span-1 flex justify-center gap-4 text-sm">
           <NavLink to="/dashboard" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Dashboard</NavLink>
           <NavLink to="/groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Groups</NavLink>
           {isAdmin && <NavLink to="/admin/seed-groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Admin</NavLink>}
         </nav>
 
-        {/* Row2 (mobile hidden): Actions for md+ only */}
+        {/* Desktop actions */}
         <div className="hidden md:flex md:col-start-3 md:row-start-1 justify-end items-center gap-2">
           {user ? (
             <>
