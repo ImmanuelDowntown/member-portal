@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import AuthRoute from "@/components/authRoute";
+import AuthRoute from "@/components/AuthRoute";
 import AdminRoute from "@/components/AdminRoute";
 
 // Headers
