@@ -1,85 +1,67 @@
-
 import { Link } from "react-router-dom";
-import HeaderDash from "@/components/HeaderDash";
 
-/**
- * Dashboard (with dashboard-specific header only)
- * - Hides any global header (e.g., HeaderAuth mounted above routes)
- * - Renders HeaderDash for this page
- * - Centers "Welcome" above the content
- * - Adds a Notifications section inside the Announcements frame
- */
-export default function Dashboard() {
+const GCAL_EMBED_URL = import.meta.env.VITE_GCAL_EMBED_URL as string | undefined;
+const TIMEZONE = import.meta.env.VITE_TZ || "America/New_York";
+
+export default function Dashboard(){
+  const calendarSrc = GCAL_EMBED_URL
+    ? `${GCAL_EMBED_URL}${GCAL_EMBED_URL.includes("?") ? "&" : "?"}ctz=${encodeURIComponent(TIMEZONE)}`
+    : null;
+
   return (
-    <>
-      {/* Hide any app-wide header that might be mounted above the route. */}
-      <style>{`header:first-of-type{display:none !important;}`}</style>
+    <div className="container py-8 md:py-10">
+      {/* General Announcements */}
+      <section className="border border-border p-5">
+        <h2 className="text-xl font-semibold text-accent">General Announcements</h2>
+        <ul className="mt-3 space-y-2 text-text">
+          <li>• Welcome to the members portal. Check your groups for updates.</li>
+          <li>• Volunteers needed for upcoming events.</li>
+          <li>• New to Immanuel? Explore the Foundations course.</li>
+        </ul>
+      </section>
 
-      <HeaderDash />
+      {/* Calendar + Quick Nav */}
+      <div className="mt-8 grid md:grid-cols-3 gap-6">
+        {/* Google Calendar */}
+        <section className="md:col-span-2 border border-border p-5">
+          <h2 className="text-xl font-semibold text-accent">Calendar</h2>
+          <p className="text-text2 text-sm mt-1">Synced from church Google Calendar.</p>
 
-      <div className="container py-8 md:py-10">
-        {/* Centered Welcome */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Welcome to your Member&apos;s Portal</h1>
-          {/* <p className="text-text2 mt-2">Check your groups for updates.</p> */}
-        </div>
-
-        {/* Announcements + Notifications (same frame) */}
-        <section className="border border-border p-5 rounded-xl">
-          {/* General Announcements */}
-          <h2 className="text-xl font-semibold text-accent">General Announcements</h2>
-          <ul className="mt-3 space-y-2 text-text">
-            <li>• Volunteers needed for upcoming events.</li>
-            <li>• New to Immanuel? Explore the Foundations course.</li>
-          </ul>
-
-          {/* Divider */}
-          <div className="my-5 border-t border-border/70" />
-
-          {/* Notifications (populated from groups the user belongs to) */}
-          <h2 className="text-xl font-semibold text-accent">Notifications</h2>
-          <p className="text-text2 text-sm mt-1">
-            Personalized updates from your groups.
-          </p>
-          <ul className="mt-3 space-y-2 text-text">
-            {/* TODO: Wire this to Firestore:
-                - Look up user memberships at: users/{uid}/memberships
-                - For each membership.groupId, subscribe to group notifications:
-                  e.g., groups/{groupId}/notifications or a shared `notifications` collection filtered by groupId IN [...ids]
-                - Merge, sort by createdAt desc, and render newest few.
-            */}
-            <li>• Worship Team: Setlist posted for Sunday.</li>
-            <li>• Alpha Study: Reading plan updated.</li>
-            <li>• Parents Group: Potluck sign‑up is live.</li>
-          </ul>
-        </section>
-
-        {/* Calendar + Quick Nav */}
-        <div className="mt-8 grid md:grid-cols-3 gap-6">
-          {/* Google Calendar */}
-          <section className="md:col-span-2 border border-border p-5 rounded-xl">
-            <h2 className="text-xl font-semibold text-accent">Calendar</h2>
-            <p className="text-text2 text-sm mt-1">Synced from church Google Calendar.</p>
-            <div className="mt-4 aspect-video bg-surface rounded-lg overflow-hidden">
+          <div className="mt-4 aspect-video bg-surface">
+            {calendarSrc ? (
               <iframe
                 className="w-full h-full border-0"
-                src="https://calendar.google.com/calendar/embed?src=immanueldowntown%40gmail.com&ctz=America%2FNew_York"
+                src={calendarSrc}
                 title="Church Calendar"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
               />
-            </div>
-          </section>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-center p-6 text-sm text-text2">
+                <div>
+                  <div className="font-medium text-text mb-1">Calendar not configured</div>
+                  <div>
+                    Set <code className="px-1 py-0.5 rounded bg-surface/50">VITE_GCAL_EMBED_URL</code> in your env.
+                    In Google Calendar → <em>Settings → Integrate calendar</em>, copy the <strong>Embed code</strong> <code>src</code> URL and paste it there.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
 
-          {/* Quick Navigation (trimmed) */}
-          <section className="border border-border p-5 rounded-xl">
-            <h2 className="text-xl font-semibold text-accent">Go to…</h2>
-            <div className="mt-3 grid grid-cols-1 gap-2">
-              <Link to="/groups" className="btn btn-outline">Groups</Link>
-              <Link to="/profile" className="btn btn-outline">Profile</Link>
-              <Link to="/settings" className="btn btn-outline">Settings</Link>
-            </div>
-          </section>
-        </div>
+        {/* Quick Navigation */}
+        <section className="border border-border p-5">
+          <h2 className="text-xl font-semibold text-accent">Go to…</h2>
+          <div className="mt-3 grid grid-cols-1 gap-2">
+            <Link to="/groups" className="btn btn-outline">Groups</Link>
+            <Link to="/forums" className="btn btn-outline">Forums</Link>
+            <Link to="/resources" className="btn btn-outline">Resources</Link>
+            <Link to="/events" className="btn btn-outline">Events</Link>
+            <Link to="/profile" className="btn btn-outline">Profile</Link>
+          </div>
+        </section>
       </div>
-    </>
+    </div>
   );
 }
