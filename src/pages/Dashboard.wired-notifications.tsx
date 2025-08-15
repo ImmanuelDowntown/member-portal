@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import HeaderAuth from "@/components/HeaderAuth";
 import Notifications from "@/components/dashboard/Notifications";
-import HeaderAuth from "@/components/HeaderAuth";
 
 /**
  * Dashboard (with dashboard-specific header only)
