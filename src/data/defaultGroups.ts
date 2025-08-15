@@ -1,14 +1,27 @@
-type Group = { name: string; slug: string; description?: string; parentId?: string | null; meta?: Record<string, any>; };
-const groups: Group[] = [
-  { name: "Strategy and Planning Group", slug: "strategy", description: "Leadership strategy & planning hub" },
-  { name: "Branding", slug: "branding", parentId: "strategy", description: "Subgroup: visual identity & messaging" },
-  { name: "Marketing", slug: "marketing", parentId: "strategy", description: "Subgroup: outreach & campaigns" },
-  { name: "Wednesday Bible Study", slug: "wednesday-bible-study", description: "Midweek Scripture study group" },
-  { name: "Disciple Alpha", slug: "disciple-alpha", description: "Discipleship cohort (Alpha)" },
-  { name: "Disciple Beta", slug: "disciple-beta", description: "Discipleship cohort (Beta)" },
-  { name: "Board", slug: "board", description: "Board members" },
-  { name: "Immanuel Worship", slug: "immanuel-worship", description: "Worship & music team" },
-  { name: "Explore", slug: "explore", description: "4-week introduction course" },
-  { name: "Foundations", slug: "foundations", description: "8-week Christian fundamentals" },
-];
-export default groups;
+export type AppGroup = {
+  slug: string
+  name: string
+  description?: string
+  parentId?: string // slug of parent group
+}
+
+// Initial group catalog. You can later move this into Firestore if preferred.
+const defaultGroups: AppGroup[] = [
+  { slug: "board", name: "Board", description: "Governing board of Immanuel Downtown." },
+
+  { slug: "immanuel-worship", name: "Immanuel Worship", description: "Worship team planning, schedules, and resources." },
+
+  { slug: "discipleship-alpha", name: "Discipleship Alpha", description: "Alpha discipleship cohort." },
+  { slug: "discipleship-beta", name: "Discipleship Beta", description: "Beta discipleship cohort." },
+
+  { slug: "wednesday-bible-study", name: "Wednesday Bible Study", description: "Weekly Bible study and discussion." },
+
+  { slug: "strategy-and-planning", name: "Strategy and Planning", description: "Leaders coordinating strategy and planning." },
+  { slug: "branding", name: "Branding", parentId: "strategy-and-planning", description: "Subgroup for identity and design." },
+  { slug: "marketing", name: "Marketing", parentId: "strategy-and-planning", description: "Subgroup focused on outreach." },
+
+  { slug: "explore", name: "Explore", description: "Exploring faith and community together." },
+  { slug: "foundations", name: "Foundations", description: "Foundations course and resources." },
+]
+
+export default defaultGroups

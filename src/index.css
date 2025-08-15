@@ -10,3 +10,7 @@ a{@apply text-accent}a:hover{@apply underline}hr{border:0;border-top:1px solid v
 .input:focus{outline:2px solid var(--accentHover);outline-offset:2px}
 .navlink{text-decoration:none;color:var(--text);transition:opacity .15s} .navlink:hover{opacity:.8}.navlink.active{color:var(--accent)}
 .text-hero-heading{color:var(--hero-heading)}.container{width:100%;max-width:1120px;margin:0 auto;padding-left:1rem;padding-right:1rem}
+html { scrollbar-gutter: stable; }
+@supports not (scrollbar-gutter: stable) {
+  html { overflow-y: scroll; }
+}

@@ -1,13 +1,13 @@
-
 import { Link } from "react-router-dom";
 import HeaderDash from "@/components/HeaderDash";
+import Notifications from "@/components/dashboard/Notifications";
 
 /**
  * Dashboard (with dashboard-specific header only)
  * - Hides any global header (e.g., HeaderAuth mounted above routes)
  * - Renders HeaderDash for this page
  * - Centers "Welcome" above the content
- * - Adds a Notifications section inside the Announcements frame
+ * - Renders live Notifications under Announcements
  */
 export default function Dashboard() {
   return (
@@ -21,7 +21,6 @@ export default function Dashboard() {
         {/* Centered Welcome */}
         <div className="text-center mb-8">
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Welcome to your Member&apos;s Portal</h1>
-          {/* <p className="text-text2 mt-2">Check your groups for updates.</p> */}
         </div>
 
         {/* Announcements + Notifications (same frame) */}
@@ -36,22 +35,10 @@ export default function Dashboard() {
           {/* Divider */}
           <div className="my-5 border-t border-border/70" />
 
-          {/* Notifications (populated from groups the user belongs to) */}
+          {/* Notifications */}
           <h2 className="text-xl font-semibold text-accent">Notifications</h2>
-          <p className="text-text2 text-sm mt-1">
-            Personalized updates from your groups.
-          </p>
-          <ul className="mt-3 space-y-2 text-text">
-            {/* TODO: Wire this to Firestore:
-                - Look up user memberships at: users/{uid}/memberships
-                - For each membership.groupId, subscribe to group notifications:
-                  e.g., groups/{groupId}/notifications or a shared `notifications` collection filtered by groupId IN [...ids]
-                - Merge, sort by createdAt desc, and render newest few.
-            */}
-            <li>• Worship Team: Setlist posted for Sunday.</li>
-            <li>• Alpha Study: Reading plan updated.</li>
-            <li>• Parents Group: Potluck sign‑up is live.</li>
-          </ul>
+          <p className="text-text2 text-sm mt-1">Personalized updates from your groups.</p>
+          <Notifications limit={20} />
         </section>
 
         {/* Calendar + Quick Nav */}
