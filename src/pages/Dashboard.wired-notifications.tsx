@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
-import HeaderDash from "@/components/HeaderDash";
+import HeaderAuth from "@/components/HeaderAuth";
 import Notifications from "@/components/dashboard/Notifications";
+import HeaderAuth from "@/components/HeaderAuth";
 
 /**
  * Dashboard (with dashboard-specific header only)
  * - Hides any global header (e.g., HeaderAuth mounted above routes)
- * - Renders HeaderDash for this page
+ * - Renders HeaderAuth for this page
  * - Centers "Welcome" above the content
  * - Renders live Notifications under Announcements
  */
@@ -15,7 +16,7 @@ export default function Dashboard() {
       {/* Hide any app-wide header that might be mounted above the route. */}
       <style>{`header:first-of-type{display:none !important;}`}</style>
 
-      <HeaderDash />
+      <HeaderAuth />
 
       <div className="container py-8 md:py-10">
         {/* Centered Welcome */}

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { addDoc, collection, doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore"
 import { useAuth } from "@/contexts/AuthContext"
 import { db } from "@/lib/firebase"
-import HeaderDash from "@/components/HeaderDash"
+import HeaderAuth from "@/components/HeaderAuth"
 import defaultGroups, { AppGroup } from "@/data/defaultGroups"
 
 type Membership = { groupId: string, role?: "admin"|"member" }
@@ -13,7 +13,7 @@ export default function Groups(){
     <>
       {/* Hide any app-wide header (e.g., HeaderAuth mounted above routes) */}
       <style>{`header:first-of-type{display:none !important;}`}</style>
-      <HeaderDash />
+      <HeaderAuth />
       <GroupsBody />
     </>
   )

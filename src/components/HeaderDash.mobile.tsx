@@ -17,7 +17,7 @@ function firstNameFromEmail(email?: string | null) {
   return (local.replace(/[._-]+/g, " ").trim().split(/\s+/)[0]) || null;
 }
 
-export default function HeaderDash(){
+export default function HeaderAuth(){
   const { user } = useAuth();
   const [greetingName, setGreetingName] = useState<string>("");
 
