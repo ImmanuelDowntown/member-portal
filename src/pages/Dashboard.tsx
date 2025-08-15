@@ -1,5 +1,4 @@
-import { Link } from "react-router-dom";
-
+/* Dashboard.tsx — no 'Go to...' menu */
 const GCAL_EMBED_URL = import.meta.env.VITE_GCAL_EMBED_URL as string | undefined;
 const TIMEZONE = (import.meta.env.VITE_TZ as string | undefined) || "America/New_York";
 
@@ -10,7 +9,6 @@ export default function Dashboard(){
 
   return (
     <div className="container py-8 md:py-10">
-      {/* Welcome */}
       <div className="text-center mb-6">
         <h1 className="text-2xl md:text-3xl font-semibold">Welcome!</h1>
       </div>
@@ -30,7 +28,7 @@ export default function Dashboard(){
         </div>
       </section>
 
-      {/* Calendar — full width on all sizes; extra tall on mobile */}
+      {/* Calendar — full width; extra tall on mobile */}
       <section className="mt-8 border border-border p-5 rounded-xl">
         <h2 className="text-xl font-semibold text-accent">Calendar</h2>
         <p className="text-text2 text-sm mt-1">Synced from church Google Calendar.</p>
@@ -55,16 +53,6 @@ export default function Dashboard(){
               </div>
             </div>
           )}
-        </div>
-      </section>
-
-      {/* Quick Links */}
-      <section className="mt-8 border border-border p-5 rounded-xl">
-        <h2 className="text-xl font-semibold text-accent">Go to…</h2>
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          <Link to="/groups" className="btn btn-outline">Groups</Link>
-          <Link to="/profile" className="btn btn-outline">Profile</Link>
-          <Link to="/settings" className="btn btn-outline">Settings</Link>
         </div>
       </section>
     </div>
