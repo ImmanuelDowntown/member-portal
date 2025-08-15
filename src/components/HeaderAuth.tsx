@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import mainLogo from "@/assets/Main_Logo.png";
+import mainLogo from "@/assets/Header_Logo.png";
 
 function firstNameFrom(full?: string | null) {
   if (!full) return null;
