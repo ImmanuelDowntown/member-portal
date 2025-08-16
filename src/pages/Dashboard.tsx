@@ -1,9 +1,12 @@
-import AdminTools from "@/components/dashboard/AdminTools";
 /* Dashboard.tsx — no 'Go to...' menu */
 const GCAL_EMBED_URL = import.meta.env.VITE_GCAL_EMBED_URL as string | undefined;
 const TIMEZONE = (import.meta.env.VITE_TZ as string | undefined) || "America/New_York";
 
+import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "react-router-dom";
+
 export default function Dashboard(){
+  const { isAdmin } = useAuth();
   const calendarSrc = GCAL_EMBED_URL
     ? `${GCAL_EMBED_URL}${GCAL_EMBED_URL.includes("?") ? "&" : "?"}ctz=${encodeURIComponent(TIMEZONE)}`
     : null;
@@ -12,10 +15,23 @@ export default function Dashboard(){
     <div className="container py-8 md:py-10">
       <div className="text-center mb-6">
         <h1 className="text-2xl md:text-3xl font-semibold">Welcome!</h1>
-      <div className="mt-4">
-        <AdminTools />
       </div>
-      </div>
+
+      {/* Admin Tools (admins only) */}
+      {isAdmin && (
+        <section className="mb-6 border border-border p-5 rounded-xl flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-accent">Admin Tools</h2>
+            <p className="text-sm text-text2">You have admin privileges.</p>
+          </div>
+          <Link
+            to="/admin/groups"
+            className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-slate-200"
+          >
+            Admin Console
+          </Link>
+        </section>
+      )}
 
       {/* Announcements + Notifications */}
       <section className="border border-border p-5 rounded-xl">

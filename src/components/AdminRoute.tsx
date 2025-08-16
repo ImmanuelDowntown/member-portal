@@ -47,17 +47,7 @@ export default function AdminRoute({ children }: { children: React.ReactNode }) 
   if (!auth.currentUser) return <Navigate to="/login" replace />;
 
   if (!allowed) {
-    return (
-      <div className="max-w-xl mx-auto p-6 rounded-2xl border border-slate-200 bg-white/70">
-        <h2 className="text-lg font-semibold text-slate-900">Admin access required</h2>
-        <p className="text-sm text-slate-700 mt-2">
-          Your account is not recognized as a super admin for this project. If you recently added
-          an admin document at <code>admins/&#123;your-uid&#125;</code>, ensure Firestore rules allow
-          you to read your own admin doc and reload.
-        </p>
-        {error && <p className="text-sm text-rose-700 mt-2">Error: {error}</p>}
-      </div>
-    );
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
