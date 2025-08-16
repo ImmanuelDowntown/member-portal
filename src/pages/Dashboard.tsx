@@ -4,6 +4,7 @@ const TIMEZONE = (import.meta.env.VITE_TZ as string | undefined) || "America/New
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
+import Notifications from "@/components/dashboard/Notifications";
 
 export default function Dashboard(){
   const { isAdmin } = useAuth();
