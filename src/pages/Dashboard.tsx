@@ -4,7 +4,6 @@ const TIMEZONE = (import.meta.env.VITE_TZ as string | undefined) || "America/New
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
-import Notifications from "@/components/dashboard/Notifications";
 
 export default function Dashboard(){
   const { isAdmin } = useAuth();
@@ -44,7 +43,7 @@ export default function Dashboard(){
         </ul>
 
         <div className="mt-6 pt-5 border-t border-border">
-          <h3 className="text-lg font-semibold text-accent">Notifications</h3>
+          <h3 className="text-xl font-semibold text-accent">Notifications</h3>
           <p className="text-sm text-text2 mt-2">You have no new notifications.</p>
         </div>
       </section>
