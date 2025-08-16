@@ -4,6 +4,7 @@ import * as functions from "firebase-functions/v1";
 admin.initializeApp();
 const db = admin.firestore();
 
+export { onGroupMessageCreated } from "./onGroupMessage";
 
 export const grantGroupAdminByEmail = functions
   .region("us-central1")

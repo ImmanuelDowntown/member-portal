@@ -33,12 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onMembershipApproved = exports.onMembershipRequestCreated = exports.grantGroupAdminByEmail = void 0;
+exports.onMembershipApproved = exports.onMembershipRequestCreated = exports.grantGroupAdminByEmail = exports.onGroupMessageCreated = void 0;
 // functions/src/index.ts
 const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions/v1"));
 admin.initializeApp();
 const db = admin.firestore();
+var onGroupMessage_1 = require("./onGroupMessage");
+Object.defineProperty(exports, "onGroupMessageCreated", { enumerable: true, get: function () { return onGroupMessage_1.onGroupMessageCreated; } });
 exports.grantGroupAdminByEmail = functions
     .region("us-central1")
     .https.onCall(async (data, context) => {
