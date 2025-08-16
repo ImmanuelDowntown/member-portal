@@ -98,7 +98,7 @@ export default function HeaderAuth(){
           <nav className="col-span-2 row-start-2 md:row-start-1 md:col-span-1 flex justify-center gap-4 text-sm">
             <NavLink to="/dashboard" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Dashboard</NavLink>
             <NavLink to="/groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Groups</NavLink>
-            {isAdmin && <NavLink to="/admin/seed-groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Admin</NavLink>}
+            {isAdmin && <NavLink to="/admin/groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Admin</NavLink>}
           </nav>
 
           {/* Desktop actions */}
@@ -140,7 +140,7 @@ export default function HeaderAuth(){
                 {user ? (
                   <>
                     <Link to="/profile" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Profile</Link>
-                    {isAdmin && <Link to="/admin/seed-groups" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Admin</Link>}
+                    {isAdmin && <Link to="/admin/groups" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Admin</Link>}
                     <button className="btn btn-outline btn-sm" onClick={async () => { setMenuOpen(false); await signOut(auth); navigate("/login", { replace: true }); }}>Sign out</button>
                   </>
                 ) : (

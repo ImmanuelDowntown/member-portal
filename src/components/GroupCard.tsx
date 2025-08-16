@@ -4,34 +4,59 @@ import { Link } from "react-router-dom";
 export type Group = {
   id: string;           // slug
   name?: string;
-  title?: string;       // fallback key if used in seed
+  title?: string;       // legacy seed key
   description?: string;
-  parent?: string;
+  parent?: string | null;
+  campus?: string | null;
   [key: string]: any;
 };
 
-export default function GroupCard({ group, footer }: { group: Group; footer?: React.ReactNode }) {
+export default function GroupCard({
+  group,
+  isMember,
+  footer,
+}: {
+  group: Group;
+  isMember?: boolean;
+  footer?: React.ReactNode;
+}) {
   const title = group.name || group.title || humanizeSlug(group.id);
-  const desc =
-    group.description ||
-    "A discussion and ministry group for our community. Details coming soon.";
+  const desc = group.description || "";
+  const parent = group.parent ? `Parent: ${humanizeSlug(group.parent)}` : null;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/70 shadow-sm p-5 flex flex-col">
-      <div className="flex-1">
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        {group.parent && (
-          <p className="text-xs text-slate-500 mt-0.5">Parent: {humanizeSlug(group.parent)}</p>
-        )}
-        <p className="text-sm text-slate-600 mt-2">{desc}</p>
+    <div className="rounded-xl border border-border bg-card p-4 flex flex-col justify-between shadow-sm">
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-lg font-semibold text-accent">{title}</h3>
+          {isMember && (
+            <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-700 border border-emerald-200">
+              Member
+            </span>
+          )}
+        </div>
+        {parent && <p className="text-xs text-text2 mt-1">{parent}</p>}
+        {desc && <p className="text-sm text-text2 mt-3">{desc}</p>}
       </div>
-      <div className="mt-4 flex items-center justify-between">
-        <Link
-          to={`/groups/${group.id}`}
-          className="text-sm px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
-        >
-          View
-        </Link>
+
+      <div className="mt-4 flex items-center gap-2">
+        {isMember ? (
+          <Link
+            to={`/groups/${group.id}`}
+            className="inline-flex items-center rounded-lg bg-slate-900 text-white px-3 py-1.5 text-sm hover:bg-slate-800"
+          >
+            View
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="inline-flex items-center rounded-lg bg-slate-200 text-slate-500 px-3 py-1.5 text-sm cursor-not-allowed"
+            title="Join this group to view"
+          >
+            View
+          </button>
+        )}
         {footer}
       </div>
     </div>
@@ -39,7 +64,5 @@ export default function GroupCard({ group, footer }: { group: Group; footer?: Re
 }
 
 function humanizeSlug(slug: string) {
-  return slug
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }

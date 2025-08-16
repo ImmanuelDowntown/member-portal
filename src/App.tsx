@@ -4,7 +4,6 @@ import AuthRoute from "@/components/AuthRoute";
 import OnboardRoute from "@/components/OnboardRoute";
 import AdminRoute from "@/components/AdminRoute";
 import GroupAdminRoute from "@/components/GroupAdminRoute";
-import SignUp from "@/pages/SignUp";
 
 // Pages
 import GroupsExplore from "@/pages/GroupsExplore";
@@ -30,6 +29,7 @@ import Welcome from "@/pages/Welcome";
 // Admin Pages (capital A)
 import GroupAdminBootstrap from "@/pages/Admin/GroupAdminBootstrap";
 import AdminGroupsIndex from "@/pages/Admin/AdminGroupsIndex";
+import AdminUsersIndex from "@/pages/Admin/AdminUsersIndex";
 import AdminGroupRequests from "@/pages/Admin/AdminGroupRequests";
 import AdminGroupMembers from "@/pages/Admin/AdminGroupMembers";
 import AdminGroupEvents from "@/pages/Admin/AdminGroupEvents";
@@ -60,8 +60,6 @@ export default function App() {
       <AuthProvider>
         <Frame>
           <Routes>
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/admin" element={<AdminRoute><Navigate to="/admin/groups" replace /></AdminRoute>} />
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot" element={<ForgotPassword />} />
@@ -84,11 +82,11 @@ export default function App() {
             <Route path="/groups/:slug" element={<AuthRoute><OnboardRoute><GroupDetail /></OnboardRoute></AuthRoute>} />
 
             {/* Admin routes */}
-            <Route path="/admin/group-admins/bootstrap" element={<AdminRoute><GroupAdminBootstrap /></AdminRoute>} />
-            <Route path="/admin/groups" element={<AdminRoute><AdminGroupsIndex /></AdminRoute>} />
-            <Route path="/admin/groups/:slug/requests" element={<GroupAdminRoute><AdminGroupRequests /></GroupAdminRoute>} />
-            <Route path="/admin/groups/:slug/members" element={<GroupAdminRoute><AdminGroupMembers /></GroupAdminRoute>} />
-            <Route path="/admin/groups/:slug/events" element={<GroupAdminRoute><AdminGroupEvents /></GroupAdminRoute>} />
+            <Route path="/admin/group-admins/bootstrap" element={<AdminRoute><OnboardRoute><GroupAdminBootstrap /></OnboardRoute></AdminRoute>} />
+            <Route path="/admin/groups" element={<AuthRoute><OnboardRoute><AdminGroupsIndex /></OnboardRoute></AuthRoute>} />
+            <Route path="/admin/groups/:slug/requests" element={<GroupAdminRoute><OnboardRoute><AdminGroupRequests /></OnboardRoute></GroupAdminRoute>} />
+            <Route path="/admin/groups/:slug/members" element={<GroupAdminRoute><OnboardRoute><AdminGroupMembers /></OnboardRoute></GroupAdminRoute>} />
+            <Route path="/admin/groups/:slug/events" element={<GroupAdminRoute><OnboardRoute><AdminGroupEvents /></OnboardRoute></GroupAdminRoute>} />
             <Route path="/admin/super-admins" element={<AdminRoute><SuperAdmins /></AdminRoute>} />
             <Route path="/admin/group-admins/by-email" element={<AdminRoute><GrantGroupAdminByEmail /></AdminRoute>} />
             <Route path="/__whoami" element={<WhoAmI />} />
@@ -100,6 +98,7 @@ export default function App() {
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/admin/users" element={<AdminRoute><AdminUsersIndex /></AdminRoute>} />
           </Routes>
         </Frame>
       </AuthProvider>
