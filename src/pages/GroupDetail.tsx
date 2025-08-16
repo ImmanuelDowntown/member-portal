@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
 import GroupAdminPanel from "@/components/GroupAdminPanel";
 import GroupJoinButton from "@/components/GroupJoinButton";

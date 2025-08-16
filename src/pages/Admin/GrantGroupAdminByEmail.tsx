@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { httpsCallable, getFunctions } from "firebase/functions";
 import { getFirestore, collection, getDocs } from "firebase/firestore";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 
 export default function GrantGroupAdminByEmail() {
   const fx = getFunctions(app);

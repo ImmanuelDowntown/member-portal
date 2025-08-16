@@ -2,7 +2,7 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 
 function Loader({ label = "Checking admin access…" }: { label?: string }) {
   return <div className="max-w-xl mx-auto p-6 text-slate-700">{label}</div>;

@@ -59,6 +59,7 @@ export default function App() {
       <AuthProvider>
         <Frame>
           <Routes>
+          <Route path="/admin" element={<AdminGroupsIndex />} />
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot" element={<ForgotPassword />} />

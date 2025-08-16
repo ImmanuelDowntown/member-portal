@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 import {
   getFirestore,
   collection,

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { getFirestore, doc, setDoc, serverTimestamp, getDocs, collection } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { app } from "@/firebase"; // change to ../firebase if needed
+import { app } from "@/lib/firebase"; // change to ../lib/firebase if needed
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {

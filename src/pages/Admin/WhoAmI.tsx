@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 
 export default function WhoAmI() {
   const auth = getAuth(app);

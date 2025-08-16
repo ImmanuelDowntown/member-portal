@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { app } from "../firebase";
+import { app } from "../lib/firebase";
 import defaultGroupsJson from "../data/defaultGroups";
 
 // If your file exports named types, this local type mirrors it.

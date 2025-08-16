@@ -35,6 +35,7 @@ function assertFirebaseConfig(cfg: Record<string, any>) {
 assertFirebaseConfig(firebaseConfig);
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+export { app };
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 

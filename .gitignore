@@ -3,3 +3,5 @@ node_modules
 # macOS junk
 .DS_Store
 ._*
+
+.vercel

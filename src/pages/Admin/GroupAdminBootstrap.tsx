@@ -10,7 +10,7 @@ import {
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 
 type Group = { id: string; name?: string };
 

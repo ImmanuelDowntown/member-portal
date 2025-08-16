@@ -1,3 +1,4 @@
+import AdminTools from "@/components/dashboard/AdminTools";
 /* Dashboard.tsx — no 'Go to...' menu */
 const GCAL_EMBED_URL = import.meta.env.VITE_GCAL_EMBED_URL as string | undefined;
 const TIMEZONE = (import.meta.env.VITE_TZ as string | undefined) || "America/New_York";
@@ -11,6 +12,9 @@ export default function Dashboard(){
     <div className="container py-8 md:py-10">
       <div className="text-center mb-6">
         <h1 className="text-2xl md:text-3xl font-semibold">Welcome!</h1>
+      <div className="mt-4">
+        <AdminTools />
+      </div>
       </div>
 
       {/* Announcements + Notifications */}

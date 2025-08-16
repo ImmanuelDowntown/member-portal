@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 
 export default function AdminGroupEdit() {
   const { slug } = useParams();

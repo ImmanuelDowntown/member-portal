@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { app } from "@/firebase"; // change to ../firebase if you don't use '@'
+import { app } from "@/lib/firebase"; // change to ../lib/firebase if you don't use '@'
 import {
   getFirestore,
   collection,

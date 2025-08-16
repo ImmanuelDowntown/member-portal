@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { app } from "@/firebase"; // change to ../firebase if you don't use the @ alias
+import { app } from "@/lib/firebase"; // change to ../lib/firebase if you don't use the @ alias
 
 type SeedGroup = {
   id: string;

@@ -12,7 +12,7 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
 
 type Group = { id: string; name?: string; parent?: string | null };

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 
 type AdminEntry = { uid: string; createdAt?: any; createdBy?: string };
 

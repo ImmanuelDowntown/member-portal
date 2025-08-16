@@ -8,7 +8,7 @@ import {
   collection,
   getCountFromServer,
 } from "firebase/firestore";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 
 type Props = { groupId: string };
 

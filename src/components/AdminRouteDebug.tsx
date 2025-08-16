@@ -1,7 +1,7 @@
 import React from "react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 
 export default function AdminRouteDebug({ children }: { children: React.ReactNode }) {
   const auth = getAuth(app);

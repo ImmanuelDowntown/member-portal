@@ -7,7 +7,7 @@ import {
   query,
   orderBy,
 } from "firebase/firestore";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
 import GroupCard, { Group } from "@/components/GroupCard";
 import GroupJoinButton from "@/components/GroupJoinButton";

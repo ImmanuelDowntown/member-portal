@@ -7,7 +7,7 @@ import {
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
 import { useUserProfile, UserProfile } from "@/hooks/useUserProfile";
 

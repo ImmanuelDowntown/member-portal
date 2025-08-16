@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { app } from "@/firebase";
+import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
 import { useUserProfile, isProfileComplete } from "@/hooks/useUserProfile";
 
