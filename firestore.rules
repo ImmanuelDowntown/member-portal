@@ -63,6 +63,7 @@ service cloud.firestore {
       // Group admins subcollection
       match /groupAdmins/{adminUid} {
         allow read: if isGroupAdmin(groupId) || isSuperAdmin();
+        // Only SUPER admins can grant/revoke group admins
         allow write: if isSuperAdmin();
       }
 
@@ -90,18 +91,27 @@ service cloud.firestore {
 
     // ---------- Users (per-user data)
     match /users/{userUid} {
+      // Users can manage their own profile doc
       allow read, create, update, delete: if isSignedIn() && userUid == uid();
 
+      // Memberships mirror (used when approving)
       match /memberships/{groupId} {
         allow read, write: if isSignedIn() && (userUid == uid() || isGroupAdmin(groupId) || isSuperAdmin());
       }
 
+      // User-scoped requests mirror (optional)
       match /membershipRequests/{groupId} {
         allow read, write, delete: if isSignedIn() && (
           userUid == uid() ||
           isGroupAdmin(groupId) ||
           isSuperAdmin()
         );
+      }
+
+      // Notifications
+      match /notifications/{notifId} {
+        // Read/update/delete by the owner; creation happens via Admin SDK (Cloud Functions)
+        allow read, update, delete: if isSignedIn() && userUid == uid();
       }
     }
 

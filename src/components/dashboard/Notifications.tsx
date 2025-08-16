@@ -1,123 +1,126 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { collection, onSnapshot, query, where, DocumentData, Timestamp } from 'firebase/firestore'
-import { useAuth } from '@/contexts/AuthContext'
-import { db } from '@/lib/firebase'
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { getAuth } from "firebase/auth";
+import {
+  getFirestore,
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+  doc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { app } from "@/lib/firebase";
+import Loader from "@/components/Loader";
 
-type Membership = { groupId: string }
-export type NotificationItem = {
-  id: string
-  groupId: string
-  title: string
-  body?: string
-  createdAt?: number // millis
-  groupName?: string
-}
+type NotificationDoc = {
+  id: string;
+  type: string;
+  text: string;
+  href?: string;
+  groupId?: string;
+  groupName?: string;
+  messageId?: string;
+  read?: boolean;
+  createdAt?: any;
+};
 
-function toMillis(t?: Timestamp | number) {
-  if (!t) return undefined
-  // @ts-ignore
-  return typeof t.toMillis === 'function' ? t.toMillis() : t
-}
+export default function Notifications() {
+  const auth = getAuth(app);
+  const db = useMemo(() => getFirestore(app), []);
+  const [rows, setRows] = useState<NotificationDoc[] | null>(null);
 
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = []
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
-  return out
-}
-
-/**
- * Live Notifications sourced from any group the user is a member of.
- * Expected Firestore shape:
- *   users/{uid}/memberships/{groupId} -> { groupId }
- *   notifications/{id} -> { groupId, title, body?, createdAt: Timestamp, groupName? }
- *
- * The component will listen for membership changes and then subscribe to notifications
- * using batched `where('groupId','in',chunkOfUpTo10)` queries. Results are merged,
- * sorted by createdAt desc, and trimmed to the provided limit.
- */
-export default function Notifications({ limit = 20 }: { limit?: number }) {
-  const { user } = useAuth()
-  const [groupIds, setGroupIds] = useState<string[]>([])
-  const [items, setItems] = useState<NotificationItem[]>([])
-  const [loading, setLoading] = useState(true)
-
-  // 1) Listen to the user's memberships to get groupIds
   useEffect(() => {
-    if (!user) { setGroupIds([]); setItems([]); setLoading(false); return }
-    const membershipsRef = collection(db, 'users', user.uid, 'memberships')
-    const unsub = onSnapshot(membershipsRef, snap => {
-      const ids = snap.docs.map(d => (d.data() as Membership).groupId).filter(Boolean)
-      setGroupIds(Array.from(new Set(ids)))
-    })
-    return () => unsub()
-  }, [user])
+    if (!auth.currentUser) return;
+    const uid = auth.currentUser.uid;
+    const q = query(
+      collection(db, `users/${uid}/notifications`),
+      orderBy("createdAt", "desc")
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list: NotificationDoc[] = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as any),
+      }));
+      setRows(list);
+    });
+    return () => unsub();
+  }, [db, auth.currentUser]);
 
-  // 2) Subscribe to notifications for those groups (handle chunks of 10 for 'in' query)
-  useEffect(() => {
-    const unsubs: Array<() => void> = []
-    const acc: Record<string, NotificationItem> = {}
-    setLoading(true)
-    setItems([])
+  if (rows === null) {
+    return (
+      <div className="p-6">
+        <Loader label="Loading notifications…" />
+      </div>
+    );
+  }
 
-    if (groupIds.length === 0) { setLoading(false); return }
-
-    for (const ids of chunk(groupIds, 10)) {
-      const q = query(collection(db, 'notifications'), where('groupId', 'in', ids))
-      const unsub = onSnapshot(q, (snap) => {
-        snap.docChanges().forEach((chg) => {
-          const d = chg.doc.data() as DocumentData
-          const n: NotificationItem = {
-            id: chg.doc.id,
-            groupId: d.groupId,
-            title: d.title ?? '(untitled)',
-            body: d.body,
-            createdAt: toMillis(d.createdAt),
-            groupName: d.groupName,
-          }
-          if (chg.type === 'removed') {
-            delete acc[n.id]
-          } else {
-            acc[n.id] = n
-          }
-        })
-        const sorted = Object.values(acc).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
-        setItems(sorted.slice(0, limit))
-        setLoading(false)
-      })
-      unsubs.push(unsub)
+  async function markRead(id: string) {
+    if (!auth.currentUser) return;
+    try {
+      await updateDoc(doc(db, `users/${auth.currentUser.uid}/notifications/${id}`), {
+        read: true,
+        readAt: serverTimestamp(),
+      });
+    } catch {
+      // ignore — best effort
     }
-
-    return () => { unsubs.forEach(u => u()) }
-  }, [groupIds, limit])
-
-  if (!user) {
-    return <div className="text-sm text-text2">Sign in to see your notifications.</div>
-  }
-
-  if (loading) {
-    return <div className="text-sm text-text2">Loading notifications…</div>
-  }
-
-  if (items.length === 0) {
-    return <div className="text-sm text-text2">No new notifications.</div>
   }
 
   return (
-    <ul className="mt-3 space-y-2 text-text">
-      {items.map(n => (
-        <li key={n.id} className="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="font-medium">
-              {n.title}
-              {n.groupName && <span className="ml-2 text-xs text-text2">· {n.groupName}</span>}
-            </div>
-            {n.createdAt && (
-              <div className="text-xs text-text2">{new Date(n.createdAt).toLocaleString()}</div>
-            )}
-          </div>
-          {n.body && <p className="text-sm text-slate-300 mt-1">{n.body}</p>}
-        </li>
-      ))}
-    </ul>
-  )
+    <div>
+      <h2 className="text-xl font-semibold text-accent">Notifications</h2>
+      {rows.length === 0 ? (
+        <p className="text-text2 mt-2">You have no new notifications.</p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {rows.map((n) => {
+            const content = (
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm">{n.text}</p>
+                  {n.groupName && (
+                    <p className="text-xs text-text2">Group: {n.groupName}</p>
+                  )}
+                </div>
+                {!n.read && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                    new
+                  </span>
+                )}
+              </div>
+            );
+
+            return (
+              <li
+                key={n.id}
+                className={
+                  "rounded-lg border border-border bg-card px-3 py-2 " +
+                  (!n.read ? "ring-1 ring-emerald-300/40" : "")
+                }
+              >
+                {n.href ? (
+                  <Link
+                    to={n.href}
+                    onClick={() => markRead(n.id)}
+                    className="block hover:opacity-90"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => markRead(n.id)}
+                    className="block w-full text-left hover:opacity-90"
+                  >
+                    {content}
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
 }
