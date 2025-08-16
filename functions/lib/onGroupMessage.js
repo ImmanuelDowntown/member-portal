@@ -39,8 +39,8 @@ const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions/v1"));
 const db = admin.firestore();
 /**
- * On group message creation, notify group members.
- * Default now: includes the sender (so a solo-member group still gets a notification).
+ * On group message creation, notify all members EXCEPT the sender.
+ * Writes docs to: users/{uid}/notifications/{auto-id}
  */
 exports.onGroupMessageCreated = functions.firestore
     .document("groups/{groupId}/messages/{msgId}")
@@ -74,9 +74,9 @@ exports.onGroupMessageCreated = functions.firestore
                 recipients.add(userDocRef.id);
         }
     }
-    // NOTE: We no longer remove the sender so solo-member groups still get a notification.
-    // If you want to exclude the sender again, uncomment the line below:
-    // if (senderUid) recipients.delete(senderUid);
+    // Exclude the sender from recipients
+    if (senderUid)
+        recipients.delete(senderUid);
     if (recipients.size === 0)
         return;
     const notifText = `You have a new message in the ${groupName} group.`;
