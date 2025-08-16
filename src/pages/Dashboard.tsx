@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import Notifications from "@/components/dashboard/Notifications";
 
-
 export default function Dashboard(){
   const { isAdmin } = useAuth();
   const calendarSrc = GCAL_EMBED_URL
@@ -45,8 +44,7 @@ export default function Dashboard(){
         </ul>
 
         <div className="mt-6 pt-5 border-t border-border">
-          <h3 className="text-xl font-semibold text-accent">Notifications</h3>
-          <p className="text-sm text-text2 mt-2">You have no new notifications.</p>
+          <div className="mt-2"><Notifications /></div>
         </div>
       </section>
 

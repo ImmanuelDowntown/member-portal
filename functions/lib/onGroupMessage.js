@@ -39,8 +39,12 @@ const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions/v1"));
 const db = admin.firestore();
 /**
- * On group message creation, notify all members EXCEPT the sender.
- * Writes docs to: users/{uid}/notifications/{auto-id}
+ * On group message creation, notify all MEMBERS and GROUP ADMINS of that group,
+ * excluding the sender.
+ *
+ * Sources of truth (doc id must be the user's uid):
+ *   - groups/{groupId}/members/{uid}
+ *   - groups/{groupId}/groupAdmins/{uid}
  */
 exports.onGroupMessageCreated = functions.firestore
     .document("groups/{groupId}/messages/{msgId}")
@@ -48,41 +52,26 @@ exports.onGroupMessageCreated = functions.firestore
     const { groupId, msgId } = ctx.params;
     const data = snap.data();
     const senderUid = data?.uid;
-    // Load group metadata (for name)
-    const groupSnap = await db.collection("groups").doc(groupId).get();
+    // Load group metadata (friendly name)
+    const groupRef = db.collection("groups").doc(groupId);
+    const groupSnap = await groupRef.get();
     const groupName = (groupSnap.exists && groupSnap.data()?.name) || groupId;
-    // Gather recipients
+    // Recipients = union(members, groupAdmins)
     const recipients = new Set();
-    // 1) Preferred: groups/{groupId}/members/{uid}
-    try {
-        const memSnap = await db.collection("groups").doc(groupId).collection("members").get();
-        memSnap.forEach((d) => recipients.add(d.id));
-    }
-    catch (e) {
-        console.warn("members subcollection read failed (fallback to user mirrors)", e);
-    }
-    // 2) Fallback: collectionGroup over users/*/memberships with groupId OR groupSlug
-    if (recipients.size === 0) {
-        const cg = db.collectionGroup("memberships");
-        const [byId, bySlug] = await Promise.all([
-            cg.where("groupId", "==", groupId).get(),
-            cg.where("groupSlug", "==", groupId).get(),
-        ]);
-        for (const d of byId.docs.concat(bySlug.docs)) {
-            const userDocRef = d.ref.parent.parent; // users/{uid}
-            if (userDocRef)
-                recipients.add(userDocRef.id);
-        }
-    }
-    // Exclude the sender from recipients
+    const [membersSnap, adminsSnap] = await Promise.all([
+        groupRef.collection("members").get(),
+        groupRef.collection("groupAdmins").get(),
+    ]);
+    membersSnap.forEach((d) => recipients.add(d.id));
+    adminsSnap.forEach((d) => recipients.add(d.id));
+    // Exclude the sender
     if (senderUid)
         recipients.delete(senderUid);
     if (recipients.size === 0)
         return;
-    const notifText = `You have a new message in the ${groupName} group.`;
     const payload = {
         type: "group_message",
-        text: notifText,
+        text: `You have a new message in the ${groupName} group.`,
         href: `/groups/${groupId}`,
         groupId,
         groupName,
@@ -90,9 +79,5 @@ exports.onGroupMessageCreated = functions.firestore
         read: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
-    const writes = [];
-    recipients.forEach((uid) => {
-        writes.push(db.collection("users").doc(uid).collection("notifications").add(payload));
-    });
-    await Promise.all(writes);
+    await Promise.all(Array.from(recipients).map((uid) => db.collection("users").doc(uid).collection("notifications").add(payload)));
 });

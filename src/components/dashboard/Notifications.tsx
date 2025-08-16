@@ -49,7 +49,8 @@ export default function Notifications() {
           id: d.id,
           ...(d.data() as any),
         }));
-        setRows(list);
+        // Only show UNREAD notifications in the panel
+        setRows(list.filter((n) => !n.read));
       },
       (err) => {
         console.error("Notifications listener error:", err?.message || err);
@@ -98,21 +99,16 @@ export default function Notifications() {
                     <p className="text-xs text-text2">Group: {n.groupName}</p>
                   )}
                 </div>
-                {!n.read && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
-                    new
-                  </span>
-                )}
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                  new
+                </span>
               </div>
             );
 
             return (
               <li
                 key={n.id}
-                className={
-                  "rounded-lg border border-border bg-card px-3 py-2 " +
-                  (!n.read ? "ring-1 ring-emerald-300/40" : "")
-                }
+                className="rounded-lg border border-border bg-card px-3 py-2 ring-1 ring-emerald-300/40"
               >
                 {n.href ? (
                   <Link
