@@ -1,103 +1,153 @@
-import { useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import PostLoginRedirect from "@/components/auth/PostLoginRedirect";
-import Header from "@/components/Header";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  getAuth,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { app } from "@/lib/firebase";
 
 export default function Login() {
-  const { login, signInWithGoogle } = useAuth();
-  const nav = useNavigate();
-  const loc = useLocation() as any;
-
-  // If the user came from a protected route, go back there after sign-in.
-  // Otherwise, land on the Dashboard.
-  const next =
-    (loc.state && loc.state.from && (loc.state.from.pathname || loc.state.from)) ||
-    "/dashboard";
+  const auth = getAuth(app);
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u) navigate("/dashboard", { replace: true });
+    });
+    return unsub;
+  }, [auth, navigate]);
+
+  async function handleGoogle() {
+    setError(null);
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      navigate("/dashboard", { replace: true });
+    } catch (e: any) {
+      setError("Google sign-in was cancelled or failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEmailPassword(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setLoading(true);
-    try {
-      await login(email, password);
-      nav(next, { replace: true });
-    } catch (err: any) {
-      setError(err?.message || "Failed to sign in");
-    } finally {
-      setLoading(false);
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
     }
-  };
-
-  const handleGoogle = async () => {
-    setError(null);
-    setLoading(true);
+    setEmailLoading(true);
     try {
-      await signInWithGoogle();
-      nav(next, { replace: true });
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate("/dashboard", { replace: true });
     } catch (err: any) {
-      setError(err?.message || "Google sign-in failed");
+      const code = String(err?.code || "");
+      let msg = "Could not sign in with email and password.";
+      if (code === "auth/invalid-email") {
+        msg = "Please enter a valid email address.";
+      } else if (code === "auth/user-not-found" || code === "auth/wrong-password") {
+        msg = "Email or password is incorrect.";
+      }
+      setError(msg);
     } finally {
-      setLoading(false);
+      setEmailLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-[var(--bg)] text-white pt-[15vh]">
-      {/* If the user is already signed in, this will redirect to the intended page or /dashboard */}
-      <PostLoginRedirect />
+    <div className="container py-8 md:py-12">
+      <div className="mx-auto max-w-md rounded-xl border border-border bg-card p-6 shadow">
+        <h1 className="text-2xl font-semibold text-accent mb-1">Welcome back</h1>
+        <p className="text-sm text-text2 mb-6">Sign in to continue.</p>
 
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-2 text-center">Welcome!</h1>
-        <p className="mb-6 text-center text-text2">
-          Sign in to access your dashboard and groups.
-        </p>
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
-        {error && <div className="text-red-400 text-sm mb-3 text-center">{error}</div>}
+        {/* Email + password form */}
+        <form onSubmit={handleEmailPassword} className="grid gap-3 mb-4">
+          <label className="grid gap-1">
+            <span className="text-sm">Email</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              className="rounded-lg border border-border bg-background px-3 py-2 outline-none"
+              required
+            />
+          </label>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e)=>setEmail(e.target.value)}
-            className="input w-full"
-            required
-            autoComplete="email"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e)=>setPassword(e.target.value)}
-            className="input w-full"
-            required
-            autoComplete="current-password"
-          />
-          <button type="submit" className="btn btn-primary w-full" disabled={loading}>
-            {loading ? "Signing in…" : "Sign in"}
+          <label className="grid gap-1">
+            <span className="text-sm">Password</span>
+            <div className="flex gap-2">
+              <input
+                type={showPw ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 outline-none"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="rounded-lg border border-border px-3 py-2 text-sm"
+              >
+                {showPw ? "Hide" : "Show"}
+              </button>
+            </div>
+          </label>
+
+          <button
+            type="submit"
+            disabled={emailLoading}
+            className="rounded-lg bg-[#919FAA] hover:opacity-90 px-4 py-2 text-white disabled:opacity-60"
+          >
+            {emailLoading ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
-        <div className="mt-3">
-          <button onClick={handleGoogle} className="btn btn-outline w-full" disabled={loading}>
-            {loading ? "Please wait…" : "Sign in with Google"}
-          </button>
-          <div className="mt-3 text-center">
-            <Link to="/forgot" className="text-sm underline text-text2">Forgot your password?</Link>
-          </div>
+        {/* Google sign-in */}
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={loading}
+          className="btn btn-outline w-full"
+        >
+          {loading ? "Please wait…" : "Sign in with Google"}
+        </button>
+
+        {/* Create account button below Google */}
+        <div className="mt-2">
+          <Link to="/signup" className="btn btn-outline w-full">
+            Create account
+          </Link>
         </div>
 
-        <p className="mt-4 text-xs text-center text-text2">
-          By continuing, you agree to our{" "}
-          <a href="#" className="underline">Terms</a> and{" "}
-          <a href="#" className="underline">Privacy Policy</a>.
-        </p>
+        {/* Forgot password link moved down */}
+        <div className="mt-6 text-center">
+          <Link to="/forgot" className="text-sm text-accent underline underline-offset-2">
+            Forgot password?
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -25,7 +25,8 @@ export default function AdminGroupsIndex() {
   const [isSuper, setIsSuper] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
 
-  useEffect(() => {
+    const [requestCounts, setRequestCounts] = useState<Record<string, number>>({});
+useEffect(() => {
     let active = true;
     async function load() {
       setLoading(true);
@@ -68,12 +69,51 @@ export default function AdminGroupsIndex() {
     return () => { active = false; };
   }, [db, uid]);
 
-  if (loading) return <div className="max-w-5xl mx-auto p-6"><Loader label="Loading admin groups…" /></div>;
+  
+  useEffect(() => {
+    let active = true;
+    async function loadCounts() {
+      if (groups.length === 0) {
+        setRequestCounts({});
+        return;
+      }
+      const entries = await Promise.all(
+        groups.map(async (g) => {
+          try {
+            const snap = await getDocs(collection(db, `groups/${g.id}/membershipRequests`));
+            return [g.id, snap.size] as const;
+          } catch {
+            return [g.id, 0] as const;
+          }
+        })
+      );
+      if (!active) return;
+      const map: Record<string, number> = {};
+      for (const [id, count] of entries) map[id] = count;
+      setRequestCounts(map);
+    }
+    loadCounts();
+    return () => {
+      active = false;
+    };
+  }, [db, groups]);
+if (loading) return <div className="max-w-5xl mx-auto p-6"><Loader label="Loading admin groups…" /></div>;
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold text-slate-900">{isSuper ? "All Groups" : "Your Groups"}</h1>
+<h1 className="text-2xl font-semibold text-slate-900">{isSuper ? "All Groups" : "Your Groups"}</h1>
       <p className="text-slate-600 mt-2">{isSuper ? "You are a super admin." : "You are a group admin."}</p>
+      <div className="mt-3 mb-2 text-right pr-4">
+        {isSuper && (
+          <Link
+            to="/admin/groups/new"
+            className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-slate-200"
+          >
+            New Group
+          </Link>
+        )}
+      </div>
+
 
       {groups.length === 0 ? (
         <p className="text-slate-600 mt-4">No groups to manage.</p>
@@ -88,7 +128,7 @@ export default function AdminGroupsIndex() {
               <div className="flex gap-2">
                 <Link
                   to={`/admin/groups/${g.id}/requests`}
-                  className="text-sm px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
+                  className={(requestCounts[g.id] ?? 0) > 0 ? "text-sm px-3 py-1.5 rounded-lg bg-[#B39949] text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#B39949]" : "text-sm px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800"}
                 >
                   View Requests
                 </Link>

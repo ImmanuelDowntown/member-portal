@@ -13,6 +13,11 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
+    // Is the signed-in user a MEMBER of the given group?
+    function isMemberOf(groupId) {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(uid())/memberships/$(groupId));
+    }
+
     // Super admin: users listed in /admins/{uid}
     function isSuperAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(uid()));
@@ -37,6 +42,34 @@ service cloud.firestore {
         allow read: if isSignedIn();
         // Writable by group admins or super admins
         allow write: if isGroupAdmin(groupId) || isSuperAdmin();
+      }
+
+      // Resources (links, docs, videos) for this group
+      match /resources/{resId} {
+        // Members can read; group admins & super admins can create/update/delete
+        allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+        allow create, update, delete: if isGroupAdmin(groupId) || isSuperAdmin();
+      }
+
+      // Group chat messages
+      match /messages/{msgId} {
+        // Members can read/write their own messages; admins can read/write/delete
+        allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+        allow create: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+        allow update, delete: if isGroupAdmin(groupId) || isSuperAdmin() || (isSignedIn() && request.auth.uid == resource.data.uid);
+      }
+
+      // Direct messages scoped under the group
+      match /directMessages/{pairId} {
+        match /messages/{dmId} {
+          // Only the two participants in the pair can read/write; require membership too
+          allow read, create: if isSignedIn()
+            && isMemberOf(groupId)
+            && (pairId.matches('^' + uid() + '_.+$') || pairId.matches('^.+_' + uid() + '$'));
+          // Allow delete by either participant or group/super admins
+          allow delete: if isSignedIn()
+            && (pairId.matches('^' + uid() + '_.+$') || pairId.matches('^.+_' + uid() + '$') || isGroupAdmin(groupId) || isSuperAdmin());
+        }
       }
 
       // Group admins subcollection
@@ -80,12 +113,8 @@ service cloud.firestore {
 
       // Memberships mirror (used when approving)
       match /memberships/{groupId} {
-        // Owner can read; group/super admins can read/write when approving/removing
-        allow read, write: if isSignedIn() && (
-          userUid == uid() ||
-          isGroupAdmin(groupId) ||
-          isSuperAdmin()
-        );
+        // Owner can read; allow admins or group members (for Team section)
+        allow read, write: if isSignedIn() && (userUid == uid() || isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
       }
 
       // User-scoped requests mirror (optional)

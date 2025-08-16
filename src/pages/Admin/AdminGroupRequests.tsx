@@ -100,6 +100,16 @@ export default function AdminGroupRequests() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="mb-4">
+        <Link
+          to="/admin"
+          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted"
+        >
+          <span aria-hidden>←</span>
+          <span>Return to Admin Console</span>
+        </Link>
+      </div>
+    
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Pending Requests</h1>

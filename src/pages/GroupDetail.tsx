@@ -5,6 +5,9 @@ import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
 import GroupAdminPanel from "@/components/GroupAdminPanel";
+import GroupResources from "@/components/groups/GroupResources";
+import TeamList from "@/components/groups/TeamList";
+import GroupChat from "@/components/groups/GroupChat";
 import GroupJoinButton from "@/components/GroupJoinButton";
 
 type GroupDoc = {
@@ -75,6 +78,27 @@ export default function GroupDetail() {
           <p className="whitespace-pre-wrap">{group.description}</p>
         </div>
       )}
+
+      {/* Related groups */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <a href="/groups/marketing" className="text-xs rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-100">Marketing</a>
+        <a href="/groups/branding" className="text-xs rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-100">Branding</a>
+      </div>
+
+      {/* Resources */}
+      <div className="mt-4">
+        <GroupResources groupId={slug!} />
+      </div>
+
+      {/* Team */}
+      <div className="mt-4">
+        <TeamList groupId={slug!} />
+      </div>
+
+      {/* Team Chat */}
+      <div className="mt-4">
+        <GroupChat groupId={slug!} />
+      </div>
 
       {/* Admin Panel (only shows if super/group admin) */}
       <GroupAdminPanel groupId={slug!} />

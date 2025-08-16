@@ -4,6 +4,7 @@ import AuthRoute from "@/components/AuthRoute";
 import OnboardRoute from "@/components/OnboardRoute";
 import AdminRoute from "@/components/AdminRoute";
 import GroupAdminRoute from "@/components/GroupAdminRoute";
+import SignUp from "@/pages/SignUp";
 
 // Pages
 import GroupsExplore from "@/pages/GroupsExplore";
@@ -59,6 +60,7 @@ export default function App() {
       <AuthProvider>
         <Frame>
           <Routes>
+          <Route path="/signup" element={<SignUp />} />
           <Route path="/admin" element={<AdminGroupsIndex />} />
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
