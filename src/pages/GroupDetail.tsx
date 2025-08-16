@@ -14,6 +14,7 @@ import {
   query,
   orderBy,
   type DocumentData,
+  type DocumentReference,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
@@ -75,53 +76,80 @@ export default function GroupDetail() {
   const [saving, setSaving] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Load group + permission
+  async function safeExists(r: DocumentReference) {
+    try {
+      const s = await getDoc(r);
+      return s.exists();
+    } catch (e) {
+      // Most likely permission-denied; treat as non-existent for gating.
+      console.warn("safeExists permission/other error", e);
+      return false;
+    }
+  }
+
+  // Load group + permission (with safe permission checks that never throw)
   React.useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (!slug) return;
-      const g = await getDoc(doc(db, "groups", slug));
-      if (g.exists() && !cancelled) setGroup({ id: g.id, ...(g.data() as any) });
+      try {
+        if (!slug) return;
 
-      // Permission: super admin OR group admin OR membership doc under user
-      let ok = false;
-      let admin = false;
-      if (auth.currentUser) {
-        const uid = auth.currentUser.uid;
-        const superSnap = await getDoc(doc(db, "admins", uid));
-        if (superSnap.exists()) {
-          ok = true;
-          admin = true;
-        } else {
-          const groupAdminSnap = await getDoc(doc(db, `groups/${slug}/groupAdmins/${uid}`));
-          if (groupAdminSnap.exists()) {
+        // Load group metadata (signed-in read should be allowed)
+        try {
+          const g = await getDoc(doc(db, "groups", slug));
+          if (g.exists() && !cancelled) setGroup({ id: g.id, ...(g.data() as any) });
+        } catch (e) {
+          console.error("Failed to load group doc", e);
+        }
+
+        let ok = false;
+        let admin = false;
+
+        const u = auth.currentUser;
+        if (u) {
+          const uid = u.uid;
+          const isSuper = await safeExists(doc(db, "admins", uid));
+          if (isSuper) {
             ok = true;
             admin = true;
           } else {
-            const memberSnap = await getDoc(doc(db, `users/${uid}/memberships/${slug}`));
-            if (memberSnap.exists()) {
+            const isGroupAdmin = await safeExists(doc(db, `groups/${slug}/groupAdmins/${uid}`));
+            if (isGroupAdmin) {
               ok = true;
+              admin = true;
             } else {
-              // fallback: membership doc with a field groupId or groupSlug
-              try {
-                const ms = await getDocs(collection(db, `users/${uid}/memberships`));
-                ok = ms.docs.some(d => {
-                  const data = d.data() as any;
-                  return data?.groupId === slug || data?.groupSlug === slug;
-                });
-              } catch {/* ignore */}
+              // membership doc with id = slug
+              const isMemberDirect = await safeExists(doc(db, `users/${uid}/memberships/${slug}`));
+              if (isMemberDirect) {
+                ok = true;
+              } else {
+                // fallback: scan user's memberships for a field groupId/groupSlug === slug
+                try {
+                  const ms = await getDocs(collection(db, `users/${uid}/memberships`));
+                  ok = ms.docs.some((d) => {
+                    const data = d.data() as any;
+                    return data?.groupId === slug || data?.groupSlug === slug;
+                  });
+                } catch (e) {
+                  console.warn("Membership scan failed", e);
+                }
+              }
             }
           }
         }
-      }
-      if (!cancelled) {
-        setIsAdmin(admin);
-        setAllowed(ok);
-        setLoading(false);
+
+        if (!cancelled) {
+          setIsAdmin(admin);
+          setAllowed(ok);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [db, auth.currentUser, slug]);
 
   // Load resources, members, messages if allowed
@@ -192,14 +220,6 @@ export default function GroupDetail() {
     }
   }
 
-  function startEdit(r: Resource) {
-    setEditingId(r.id);
-    setEditTitle(r.title);
-    setEditUrl(r.url);
-    setEditNote(r.note || "");
-    setError(null);
-  }
-
   async function saveEdit() {
     if (!editingId) return;
     setError(null);
@@ -227,6 +247,14 @@ export default function GroupDetail() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function startEdit(r: Resource) {
+    setEditingId(r.id);
+    setEditTitle(r.title);
+    setEditUrl(r.url);
+    setEditNote(r.note || "");
+    setError(null);
   }
 
   async function deleteResource(id: string) {
@@ -416,7 +444,7 @@ export default function GroupDetail() {
                         {isAdmin && (
                           <>
                             <button
-                              onClick={() => setEditingId(r.id)}
+                              onClick={() => startEdit(r)}
                               className="text-sm rounded-lg border border-border px-3 py-1.5 hover:bg-muted"
                             >
                               Edit
