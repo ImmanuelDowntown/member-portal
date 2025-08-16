@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getAuth } from "firebase/auth";
 import {
   getFirestore,
   collection,
@@ -13,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
+import { useAuth } from "@/contexts/AuthContext";
 
 type NotificationDoc = {
   id: string;
@@ -27,44 +27,58 @@ type NotificationDoc = {
 };
 
 export default function Notifications() {
-  const auth = getAuth(app);
   const db = useMemo(() => getFirestore(app), []);
+  const { user, loading } = useAuth();
+  const uid = user?.uid ?? null;
+
   const [rows, setRows] = useState<NotificationDoc[] | null>(null);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
-    const uid = auth.currentUser.uid;
+    if (!uid) {
+      setRows([]); // show empty state if not signed in yet
+      return;
+    }
     const q = query(
       collection(db, `users/${uid}/notifications`),
       orderBy("createdAt", "desc")
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const list: NotificationDoc[] = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as any),
-      }));
-      setRows(list);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list: NotificationDoc[] = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as any),
+        }));
+        setRows(list);
+      },
+      (err) => {
+        console.error("Notifications listener error:", err?.message || err);
+        setRows([]);
+      }
+    );
     return () => unsub();
-  }, [db, auth.currentUser]);
+  }, [db, uid]);
 
-  if (rows === null) {
+  if (rows === null || loading) {
     return (
-      <div className="p-6">
-        <Loader label="Loading notifications…" />
+      <div className="p-1">
+        <h2 className="text-xl font-semibold text-accent">Notifications</h2>
+        <div className="mt-2">
+          <Loader label="Loading notifications…" />
+        </div>
       </div>
     );
   }
 
   async function markRead(id: string) {
-    if (!auth.currentUser) return;
+    if (!uid) return;
     try {
-      await updateDoc(doc(db, `users/${auth.currentUser.uid}/notifications/${id}`), {
+      await updateDoc(doc(db, `users/${uid}/notifications/${id}`), {
         read: true,
         readAt: serverTimestamp(),
       });
     } catch {
-      // ignore — best effort
+      // best-effort
     }
   }
 
