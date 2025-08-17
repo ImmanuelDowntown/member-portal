@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -54,7 +55,7 @@ service cloud.firestore {
         // Allow author OR admins to update/delete their own message
         allow update, delete: if isGroupAdmin(groupId) || isSuperAdmin() || (isSignedIn() && request.auth.uid == resource.data.uid);
 
-        // --- NEW: Threaded replies under each message ---
+        // --- Threaded replies under each message ---
         match /replies/{replyId} {
           // Same visibility as messages
           allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
@@ -78,10 +79,10 @@ service cloud.firestore {
       }
 
       // Group admins subcollection
-       match /groupAdmins/{adminUid} {
-       allow read: if isGroupAdmin(groupId) || isSuperAdmin();
-      // Allow SUPER admins or current group admins to grant/revoke admins
-      allow write: if isGroupAdmin(groupId) || isSuperAdmin();
+      match /groupAdmins/{adminUid} {
+        allow read: if isGroupAdmin(groupId) || isSuperAdmin();
+        // Allow SUPER admins or current group admins to grant/revoke admins
+        allow write: if isGroupAdmin(groupId) || isSuperAdmin();
       }
 
       // Membership requests
@@ -108,8 +109,10 @@ service cloud.firestore {
 
     // ---------- Users (per-user data)
     match /users/{userUid} {
-      // Users can manage their own profile doc
-      allow read, create, update, delete: if isSignedIn() && userUid == uid();
+      // CHANGE: allow super admins to read any user profile document
+      allow read: if isSignedIn() && (userUid == uid() || isSuperAdmin());
+      // Users manage their own profile document
+      allow create, update, delete: if isSignedIn() && userUid == uid();
 
       // Memberships mirror (used when approving)
       match /memberships/{groupId} {
@@ -131,7 +134,7 @@ service cloud.firestore {
         allow read, update, delete: if isSignedIn() && userUid == uid();
       }
 
-      // --- NEW: Per-user thread reads for the "New replies" pill ---
+      // Per-user thread reads for the "New replies" pill
       match /threadReads/{docId} {
         allow read, write: if isSignedIn() && userUid == uid();
       }
@@ -142,7 +145,5 @@ service cloud.firestore {
       allow read: if isSignedIn() && (adminUid == uid() || isSuperAdmin());
       allow write: if isSuperAdmin();
     }
-
-    // ---------- Default deny for any paths not matched above
   }
 }
