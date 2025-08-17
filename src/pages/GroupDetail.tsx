@@ -22,6 +22,7 @@ import {
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
+import GroupResources from "@/components/groups/GroupResources";
 
 type GroupDoc = {
   name?: string;
@@ -359,6 +360,12 @@ export default function GroupDetail() {
     } finally { setReplySending(false); }
   }
 
+  // NEW: allow deleting a reply (author or admin)
+  async function deleteReply(parentId: string, replyId: string) {
+    if (!confirm("Delete this reply?")) return;
+    await deleteDoc(doc(db, `groups/${slug}/messages/${parentId}/replies/${replyId}`));
+  }
+
   if (loading) {
     return (
       <div className="container py-8">
@@ -398,11 +405,8 @@ export default function GroupDetail() {
         {group.description && <p className="text-sm text-text2 mt-2">{group.description}</p>}
 
         {/* Resources */}
-        <section className="mt-6 rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-accent">Resources</h2>
-          </div>
-          {/* Resource editor/list omitted for brevity (unchanged logic) */}
+        <section className="mt-6">
+          <GroupResources groupId={slug} />
         </section>
 
         {/* Messages */}
@@ -423,7 +427,7 @@ export default function GroupDetail() {
                       </div>
                       <div className="flex items-center gap-2">
                         {hasNew && count > 0 && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-400 text-black font-medium">New replies</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "#C5B175", color: "#282F36" }}>New replies</span>
                         )}
                         <button
                           onClick={() => openThread(m)}
@@ -490,8 +494,15 @@ export default function GroupDetail() {
                   ) : (
                     replies.map((r) => (
                       <div key={r.id} className="rounded-lg border border-slate-700 px-3 py-2">
-                        <p className="text-sm"><span className="font-medium">{r.displayName || "Member"}</span></p>
-                        <p className="text-sm text-slate-200 whitespace-pre-wrap">{r.text}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm"><span className="font-medium">{r.displayName || "Member"}</span></p>
+                            <p className="text-sm text-slate-200 whitespace-pre-wrap">{r.text}</p>
+                          </div>
+                          {(isAdmin || auth.currentUser?.uid === r.uid) && (
+                            <button onClick={() => deleteReply(threadFor.id, r.id)} className="text-xs rounded-lg border border-rose-300 text-rose-700 px-2 py-1 hover:bg-rose-50 h-fit">Delete</button>
+                          )}
+                        </div>
                       </div>
                     ))
                   )}
