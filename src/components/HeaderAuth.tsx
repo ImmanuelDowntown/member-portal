@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
@@ -19,8 +19,8 @@ function useStandalone() {
     const isiOSStandalone = (navigator as any).standalone === true; // iOS Safari
     const update = () => setStandalone(Boolean((mm && mm.matches) || isiOSStandalone));
     update();
-    mm && mm.addEventListener && mm.addEventListener('change', update);
-    return () => { mm && mm.removeEventListener && mm.removeEventListener('change', update); };
+    mm && (mm as any).addEventListener && (mm as any).addEventListener('change', update);
+    return () => { mm && (mm as any).removeEventListener && (mm as any).removeEventListener('change', update); };
   }, []);
   return standalone;
 }
@@ -94,11 +94,11 @@ export default function HeaderAuth(){
           </div>
 
           {/* Nav */}
-          <nav className="col-span-2 row-start-2 md:row-start-1 md:col-span-1 flex justify-center gap-4 text-sm">
-            <NavLink to="/dashboard" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Dashboard</NavLink>
-              <NavLink to="/sunday-resources" className={({ isActive }) => `px-3 py-2 rounded-lg text-sm ${isActive ? "bg-muted text-accent" : "text-text hover:text-accent"}`}>Sunday White Papers</NavLink>
-            <NavLink to="/groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Groups</NavLink>
-            {isAdmin && <NavLink to="/admin/seed-groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Admin</NavLink>}
+          <nav className="col-span-2 row-start-2 md:row-start-1 md:col-span-1 flex items-center justify-center gap-4 text-sm">
+            <NavLink to="/dashboard" className={({isActive}) => isActive ? "navlink active whitespace-nowrap" : "navlink whitespace-nowrap"}>Dashboard</NavLink>
+            <NavLink to="/sunday-resources" className={({isActive}) => isActive ? "navlink active whitespace-nowrap" : "navlink whitespace-nowrap"}>Sunday White Papers</NavLink>
+            <NavLink to="/groups" className={({isActive}) => isActive ? "navlink active whitespace-nowrap" : "navlink whitespace-nowrap"}>Groups</NavLink>
+            {isAdmin && <NavLink to="/admin/seed-groups" className={({isActive}) => isActive ? "navlink active whitespace-nowrap" : "navlink whitespace-nowrap"}>Admin</NavLink>}
           </nav>
 
           {/* Desktop actions */}

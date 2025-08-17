@@ -1,0 +1,123 @@
+.
+├── dashboard-widgets-pack
+│   └── dashboard-widgets-pack
+│       ├── README-Dashboard-Widgets.md
+│       └── src
+│           ├── components
+│           ├── pages
+│           └── types
+├── favicon.svg
+├── firebase.json
+├── firestore.indexes.json
+├── firestore.rules
+├── functions
+│   ├── lib
+│   │   ├── index.js
+│   │   └── onGroupMessage.js
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── src
+│   │   ├── index.ts
+│   │   └── onGroupMessage.ts
+│   └── tsconfig.json
+├── gitattributes
+├── gitignore
+├── index.html
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── project_files.txt
+├── project_tree.txt
+├── project-tree.txt
+├── public
+│   ├── apple-touch-icon.png
+│   ├── icons
+│   │   ├── icon-192.png
+│   │   ├── icon-512.png
+│   │   ├── maskable-192.png
+│   │   └── maskable-512.png
+│   ├── manifest.webmanifest
+│   └── sw.js
+├── README.md
+├── src
+│   ├── App.tsx
+│   ├── assets
+│   │   ├── Header_Logo.png
+│   │   └── Main_Logo.png
+│   ├── components
+│   │   ├── AdminRoute.tsx
+│   │   ├── AdminRouteDebug.tsx
+│   │   ├── auth
+│   │   │   └── PostLoginRedirect.tsx
+│   │   ├── AuthRoute.tsx
+│   │   ├── dashboard
+│   │   │   ├── AdminTools.tsx
+│   │   │   ├── Announcements.tsx
+│   │   │   ├── MyGroups.tsx
+│   │   │   ├── Notifications.tsx
+│   │   │   └── UpcomingEvents.tsx
+│   │   ├── GroupAdminPanel.tsx
+│   │   ├── GroupAdminRoute.tsx
+│   │   ├── GroupCard.tsx
+│   │   ├── GroupJoinButton.tsx
+│   │   ├── groups
+│   │   │   ├── GroupChat.tsx
+│   │   │   ├── GroupResources.tsx
+│   │   │   └── TeamList.tsx
+│   │   ├── Header.tsx
+│   │   ├── HeaderAuth.tsx
+│   │   ├── Loader.tsx
+│   │   └── OnboardRoute.tsx
+│   ├── contexts
+│   │   └── AuthContext.tsx
+│   ├── data
+│   │   ├── campuses.ts
+│   │   └── defaultGroups.ts
+│   ├── hooks
+│   │   └── useUserProfile.ts
+│   ├── index.css
+│   ├── lib
+│   │   └── firebase.ts
+│   ├── main.tsx
+│   ├── pages
+│   │   ├── Admin
+│   │   │   ├── AdminGroupEdit.tsx
+│   │   │   ├── AdminGroupEvents.tsx
+│   │   │   ├── AdminGroupMembers.tsx
+│   │   │   ├── AdminGroupNew.tsx
+│   │   │   ├── AdminGroupRequests.tsx
+│   │   │   ├── AdminGroupsIndex.tsx
+│   │   │   ├── AdminUsersIndex.tsx
+│   │   │   ├── GrantGroupAdminByEmail.tsx
+│   │   │   ├── GroupAdminBootstrap.tsx
+│   │   │   ├── SeedGroups.tsx
+│   │   │   ├── SeedGroupsDEBUG.tsx
+│   │   │   ├── SuperAdmins.tsx
+│   │   │   └── WhoAmI.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── Events.tsx
+│   │   ├── ForgotPassword.tsx
+│   │   ├── Forums.tsx
+│   │   ├── GroupDetail.tsx
+│   │   ├── Groups.tsx
+│   │   ├── GroupsExplore.tsx
+│   │   ├── Login.tsx
+│   │   ├── Profile.tsx
+│   │   ├── ResetPassword.tsx
+│   │   ├── Resources.tsx
+│   │   ├── SeedGroupsFromDefaults.tsx
+│   │   ├── Settings.tsx
+│   │   ├── SignUp.tsx
+│   │   ├── SundayResources.tsx
+│   │   └── Welcome.tsx
+│   ├── types
+│   │   ├── images.d.ts
+│   │   └── models.ts
+│   └── vite-env.d.ts
+├── tailwind.config.js
+├── tsconfig.json
+├── tsconfig.tsbuildinfo
+├── vercel.json
+└── vite.config.ts
+
+25 directories, 96 files

@@ -15,6 +15,7 @@ import HeaderAuth from "@/components/HeaderAuth";
 
 // Core Pages
 import Login from "@/pages/Login";
+import SignUp from "@/pages/SignUp";
 import Dashboard from "@/pages/Dashboard";
 import Groups from "@/pages/Groups";
 import Forums from "@/pages/Forums";
@@ -45,6 +46,7 @@ function Frame({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
   const onLogin =
     loc.pathname === "/login" ||
+    loc.pathname === "/signup" ||
     loc.pathname === "/forgot" ||
     loc.pathname === "/reset";
   return (
@@ -64,6 +66,7 @@ export default function App() {
             {/* Public auth routes */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
             <Route path="/forgot" element={<ForgotPassword />} />
             <Route path="/reset" element={<ResetPassword />} />
 
