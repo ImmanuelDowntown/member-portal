@@ -1,4 +1,4 @@
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "firebase/auth";
@@ -31,7 +31,6 @@ export default function HeaderAuth(){
   const [greetingName, setGreetingName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
   const isStandalone = useStandalone();
-  const navigate = useNavigate();
 
   useEffect(() => {
     let isMounted = true;
@@ -97,8 +96,9 @@ export default function HeaderAuth(){
           {/* Nav */}
           <nav className="col-span-2 row-start-2 md:row-start-1 md:col-span-1 flex justify-center gap-4 text-sm">
             <NavLink to="/dashboard" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Dashboard</NavLink>
+              <NavLink to="/sunday-resources" className={({ isActive }) => `px-3 py-2 rounded-lg text-sm ${isActive ? "bg-muted text-accent" : "text-text hover:text-accent"}`}>Sunday White Papers</NavLink>
             <NavLink to="/groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Groups</NavLink>
-            {isAdmin && <NavLink to="/admin/groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Admin</NavLink>}
+            {isAdmin && <NavLink to="/admin/seed-groups" className={({isActive}) => isActive ? "navlink active" : "navlink"}>Admin</NavLink>}
           </nav>
 
           {/* Desktop actions */}
@@ -107,7 +107,7 @@ export default function HeaderAuth(){
               <>
                 <span className="text-sm text-text2">Hi{greetingName ? `, ${greetingName}` : ""}</span>
                 <Link to="/profile" className="btn btn-outline btn-md">Profile</Link>
-                <button className="btn btn-outline btn-md" onClick={async () => { await signOut(auth); navigate("/login", { replace: true }); }}>Sign out</button>
+                <button className="btn btn-outline btn-md" onClick={() => signOut(auth)}>Sign out</button>
               </>
             ) : (
               loc.pathname !== "/login" && <Link to="/login" className="btn btn-outline btn-md">Sign in</Link>
@@ -140,8 +140,8 @@ export default function HeaderAuth(){
                 {user ? (
                   <>
                     <Link to="/profile" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Profile</Link>
-                    {isAdmin && <Link to="/admin/groups" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Admin</Link>}
-                    <button className="btn btn-outline btn-sm" onClick={async () => { setMenuOpen(false); await signOut(auth); navigate("/login", { replace: true }); }}>Sign out</button>
+                    {isAdmin && <Link to="/admin/seed-groups" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Admin</Link>}
+                    <button className="btn btn-outline btn-sm" onClick={() => { setMenuOpen(false); signOut(auth); }}>Sign out</button>
                   </>
                 ) : (
                   loc.pathname !== "/login" && <Link to="/login" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Sign in</Link>
