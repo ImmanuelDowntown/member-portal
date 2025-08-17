@@ -19,9 +19,10 @@ type Resource = {
   title: string;
   url: string;
   type?: "drive" | "video" | "link";
+  description?: string;
   createdAt?: any;
   createdBy?: string;
-}
+};
 
 export default function GroupResources({ groupId }: { groupId: string }) {
   const auth = getAuth(app);
@@ -30,13 +31,14 @@ export default function GroupResources({ groupId }: { groupId: string }) {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [type, setType] = useState<"drive" | "video" | "link">("link");
+  const [description, setDescription] = useState("");
   const [canEdit, setCanEdit] = useState(false);
   const uid = auth.currentUser?.uid || null;
 
   useEffect(() => {
     const q = query(collection(db, `groups/${groupId}/resources`), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+      setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
     });
     return unsub;
   }, [db, groupId]);
@@ -44,16 +46,24 @@ export default function GroupResources({ groupId }: { groupId: string }) {
   useEffect(() => {
     let active = true;
     async function checkAdmin() {
-      if (!uid) { setCanEdit(false); return; }
+      if (!uid) {
+        setCanEdit(false);
+        return;
+      }
       const superDoc = await getDoc(doc(db, "admins", uid));
       if (!active) return;
-      if (superDoc.exists()) { setCanEdit(true); return; }
+      if (superDoc.exists()) {
+        setCanEdit(true);
+        return;
+      }
       const gaDoc = await getDoc(doc(db, `groups/${groupId}/groupAdmins/${uid}`));
       if (!active) return;
       setCanEdit(gaDoc.exists());
     }
     checkAdmin();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [db, groupId, uid]);
 
   async function addResource(e: React.FormEvent) {
@@ -63,12 +73,16 @@ export default function GroupResources({ groupId }: { groupId: string }) {
       title: title.trim(),
       url: url.trim(),
       type,
+      description: description.trim() || "",
       createdAt: serverTimestamp(),
       createdBy: uid,
     };
     if (!data.title || !data.url) return;
     await addDoc(collection(db, `groups/${groupId}/resources`), data as any);
-    setTitle(""); setUrl(""); setType("link");
+    setTitle("");
+    setUrl("");
+    setType("link");
+    setDescription("");
   }
 
   async function removeResource(id?: string) {
@@ -76,9 +90,17 @@ export default function GroupResources({ groupId }: { groupId: string }) {
     await deleteDoc(doc(db, `groups/${groupId}/resources/${id}`));
   }
 
-  const pretty = useMemo(() => (u: string) => {
-    try { const url = new URL(u); return url.host + url.pathname; } catch { return u; }
-  }, []);
+  const pretty = useMemo(
+    () => (u: string) => {
+      try {
+        const parsed = new URL(u);
+        return parsed.host + parsed.pathname;
+      } catch {
+        return u;
+      }
+    },
+    []
+  );
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white/70 p-4">
@@ -109,20 +131,46 @@ export default function GroupResources({ groupId }: { groupId: string }) {
             <option value="drive">Drive</option>
             <option value="video">Video</option>
           </select>
+
+          {/* Description field - full width row */}
+          <textarea
+            className="sm:col-span-6 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none resize-y min-h-[80px]"
+            placeholder="Add a description (optional)…"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+
           <div className="sm:col-span-6">
-            <button className="rounded-lg bg-[#919FAA] hover:opacity-90 px-4 py-2 text-white text-sm">Add resource</button>
+            <button className="rounded-lg bg-[#919FAA] hover:opacity-90 px-4 py-2 text-white text-sm">
+              Add resource
+            </button>
           </div>
         </form>
       )}
 
       <ul className="mt-3 divide-y divide-slate-200">
         {items.map((r) => (
-          <li key={r.id} className="py-2 flex items-center justify-between gap-3">
-            <a href={r.url} target="_blank" rel="noreferrer" className="text-sm text-accent underline underline-offset-2 break-all">
-              {r.title || pretty(r.url)}
-            </a>
+          <li key={r.id} className="py-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <a
+                href={r.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-accent underline underline-offset-2 break-all"
+              >
+                {r.title || pretty(r.url)}
+              </a>
+              {r.description && (
+                <p className="mt-1 text-sm text-slate-600 whitespace-pre-wrap break-words">
+                  {r.description}
+                </p>
+              )}
+            </div>
             {canEdit && (
-              <button onClick={() => removeResource(r.id)} className="text-xs rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-100">
+              <button
+                onClick={() => removeResource(r.id)}
+                className="text-xs shrink-0 rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-100"
+              >
                 Remove
               </button>
             )}

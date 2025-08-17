@@ -78,10 +78,10 @@ service cloud.firestore {
       }
 
       // Group admins subcollection
-      match /groupAdmins/{adminUid} {
-        allow read: if isGroupAdmin(groupId) || isSuperAdmin();
-        // Only SUPER admins can grant/revoke group admins
-        allow write: if isSuperAdmin();
+       match /groupAdmins/{adminUid} {
+       allow read: if isGroupAdmin(groupId) || isSuperAdmin();
+      // Allow SUPER admins or current group admins to grant/revoke admins
+      allow write: if isGroupAdmin(groupId) || isSuperAdmin();
       }
 
       // Membership requests
