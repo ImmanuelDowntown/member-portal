@@ -20,11 +20,11 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/users/$(uid())/memberships/$(groupId));
     }
 
-match /sundayResources/{resId} {
-  allow read: if isSignedIn();
-  allow create, update, delete: if isSuperAdmin();
-}
-
+    // ---------- Sunday Resources (unchanged)
+    match /sundayResources/{resId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSuperAdmin();
+    }
 
     // ---------- Groups root
     match /groups/{groupId} {
@@ -40,7 +40,7 @@ match /sundayResources/{resId} {
         allow write: if isGroupAdmin(groupId) || isSuperAdmin();
       }
 
-      // Resources (links, docs, videos) for this group
+      // Resources (links, docs, videos) for this group  [Option A: admins-only writes]
       match /resources/{resId} {
         // Members can read; group admins & super admins can create/update/delete
         allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
@@ -51,7 +51,18 @@ match /sundayResources/{resId} {
       match /messages/{msgId} {
         allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
         allow create: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+        // Allow author OR admins to update/delete their own message
         allow update, delete: if isGroupAdmin(groupId) || isSuperAdmin() || (isSignedIn() && request.auth.uid == resource.data.uid);
+
+        // --- NEW: Threaded replies under each message ---
+        match /replies/{replyId} {
+          // Same visibility as messages
+          allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+          // Members can create replies; admins too
+          allow create: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+          // Author OR admins can update/delete a reply
+          allow update, delete: if isGroupAdmin(groupId) || isSuperAdmin() || (isSignedIn() && request.auth.uid == resource.data.uid);
+        }
       }
 
       // Direct messages scoped under the group
@@ -118,6 +129,11 @@ match /sundayResources/{resId} {
       match /notifications/{notifId} {
         // Read/update/delete by the owner; creation happens via Admin SDK (Cloud Functions)
         allow read, update, delete: if isSignedIn() && userUid == uid();
+      }
+
+      // --- NEW: Per-user thread reads for the "New replies" pill ---
+      match /threadReads/{docId} {
+        allow read, write: if isSignedIn() && userUid == uid();
       }
     }
 
