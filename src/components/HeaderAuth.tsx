@@ -19,8 +19,8 @@ function useStandalone() {
     const isiOSStandalone = (navigator as any).standalone === true; // iOS Safari
     const update = () => setStandalone(Boolean((mm && mm.matches) || isiOSStandalone));
     update();
-    mm && (mm as any).addEventListener && (mm as any).addEventListener('change', update);
-    return () => { mm && (mm as any).removeEventListener && (mm as any).removeEventListener('change', update); };
+    mm && mm.addEventListener && mm.addEventListener('change', update);
+    return () => { mm && mm.removeEventListener && mm.removeEventListener('change', update); };
   }, []);
   return standalone;
 }
@@ -31,6 +31,11 @@ export default function HeaderAuth(){
   const [greetingName, setGreetingName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
   const isStandalone = useStandalone();
+
+  // Shared class builder so ALL nav items vertically center & wrap consistently
+  const baseNavItem = "inline-flex items-center justify-center min-h-[2.25rem] px-3 py-2 rounded-lg text-sm leading-tight text-center whitespace-normal md:whitespace-nowrap";
+  const navItemClass = (isActive: boolean) =>
+    `${baseNavItem} ${isActive ? "bg-muted text-accent" : "text-text hover:text-accent"}`;
 
   useEffect(() => {
     let isMounted = true;
@@ -94,11 +99,11 @@ export default function HeaderAuth(){
           </div>
 
           {/* Nav */}
-          <nav className="col-span-2 row-start-2 md:row-start-1 md:col-span-1 flex items-center justify-center gap-4 text-sm">
-            <NavLink to="/dashboard" className={({isActive}) => isActive ? "navlink active whitespace-nowrap" : "navlink whitespace-nowrap"}>Dashboard</NavLink>
-            <NavLink to="/sunday-resources" className={({isActive}) => isActive ? "navlink active whitespace-nowrap" : "navlink whitespace-nowrap"}>Sunday White Papers</NavLink>
-            <NavLink to="/groups" className={({isActive}) => isActive ? "navlink active whitespace-nowrap" : "navlink whitespace-nowrap"}>Groups</NavLink>
-            {isAdmin && <NavLink to="/admin/seed-groups" className={({isActive}) => isActive ? "navlink active whitespace-nowrap" : "navlink whitespace-nowrap"}>Admin</NavLink>}
+          <nav className="col-span-2 row-start-2 md:row-start-1 md:col-span-1 flex justify-center gap-4 text-sm">
+            <NavLink to="/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
+            <NavLink to="/sunday-resources" className={({isActive}) => navItemClass(isActive)}>Sunday White Papers</NavLink>
+            <NavLink to="/groups" className={({isActive}) => navItemClass(isActive)}>Groups</NavLink>
+            {isAdmin && <NavLink to="/admin" className={({isActive}) => navItemClass(isActive)}>Admin</NavLink>}
           </nav>
 
           {/* Desktop actions */}
@@ -140,7 +145,7 @@ export default function HeaderAuth(){
                 {user ? (
                   <>
                     <Link to="/profile" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Profile</Link>
-                    {isAdmin && <Link to="/admin/seed-groups" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Admin</Link>}
+                    {isAdmin && <Link to="/admin" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Admin</Link>}
                     <button className="btn btn-outline btn-sm" onClick={() => { setMenuOpen(false); signOut(auth); }}>Sign out</button>
                   </>
                 ) : (
