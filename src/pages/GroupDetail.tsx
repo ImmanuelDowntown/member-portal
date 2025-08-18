@@ -22,7 +22,6 @@ import {
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
-import GroupResources from "@/components/groups/GroupResources";
 
 type GroupDoc = {
   name?: string;
@@ -50,7 +49,7 @@ type Message = {
   uid: string;
   displayName?: string;
   text: string;
-  createdAt?: any;
+  createdAt?: unknown;
   replyCount?: number;
 };
 
@@ -59,7 +58,7 @@ type Reply = {
   uid: string;
   displayName?: string;
   text: string;
-  createdAt?: any;
+  createdAt?: unknown;
 };
 
 export default function GroupDetail() {
@@ -86,7 +85,7 @@ export default function GroupDetail() {
   const [replySending, setReplySending] = React.useState(false);
 
   // Per-user thread reads to show "New replies"
-  const [threadReads, setThreadReads] = React.useState<Record<string, { lastReplyCount?: number; lastViewedAt?: any }>>({});
+  const [threadReads, setThreadReads] = React.useState<Record<string, { lastReplyCount?: number; lastViewedAt?: unknown }>>({});
 
   // Admin resource editor state
   const [newTitle, setNewTitle] = React.useState<string>("");
@@ -99,12 +98,25 @@ export default function GroupDetail() {
   const [saving, setSaving] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Direct Messages (multi-select in-page)
+  const [dmFilter, setDmFilter] = React.useState<string>("");
+  const [dmSelections, setDmSelections] = React.useState<Record<string, boolean>>({});
+  const [dmText, setDmText] = React.useState<string>("");
+  const [dmSending, setDmSending] = React.useState<boolean>(false);
+  const [dmError, setDmError] = React.useState<string>("");
+  const [dmSuccess, setDmSuccess] = React.useState<boolean>(false);
+
+  const hasDmSelection = React.useMemo(() => Object.values(dmSelections).some(Boolean), [dmSelections]);
+
+  function pairIdFor(a: string, b: string) {
+    return [a, b].sort().join("_");
+  }
+
   async function safeExists(r: DocumentReference) {
     try {
       const s = await getDoc(r);
       return s.exists();
-    } catch (e) {
-      console.warn("safeExists permission/other error", e);
+    } catch {
       return false;
     }
   }
@@ -117,7 +129,7 @@ export default function GroupDetail() {
 
         try {
           const g = await getDoc(doc(db, "groups", slug));
-          if (g.exists() && !cancelled) setGroup({ id: g.id, ...(g.data() as any) });
+          if (g.exists() && !cancelled) setGroup({ id: g.id, ...(g.data() as Record<string, unknown>) as GroupDoc });
         } catch (e) {
           console.error("Failed to load group doc", e);
         }
@@ -132,8 +144,8 @@ export default function GroupDetail() {
           if (isSuper) {
             ok = true; admin = true;
           } else {
-            const isGroupAdmin = await safeExists(doc(db, `groups/${slug}/groupAdmins/${uid}`));
-            if (isGroupAdmin) {
+            const isGroupAdminDoc = await safeExists(doc(db, `groups/${slug}/groupAdmins/${uid}`));
+            if (isGroupAdminDoc) {
               ok = true; admin = true;
             } else {
               const isMemberDirect = await safeExists(doc(db, `users/${uid}/memberships/${slug}`));
@@ -143,7 +155,7 @@ export default function GroupDetail() {
                 try {
                   const ms = await getDocs(collection(db, `users/${uid}/memberships`));
                   ok = ms.docs.some((d) => {
-                    const data = d.data() as any;
+                    const data = d.data() as Record<string, unknown>;
                     return data?.groupId === slug || data?.groupSlug === slug;
                   });
                 } catch (e) {
@@ -189,15 +201,16 @@ export default function GroupDetail() {
       async (snap) => {
         const base: Message[] = snap.docs.map((d) => ({
           id: d.id,
-          uid: (d.data() as any)?.uid,
-          displayName: (d.data() as any)?.displayName,
-          text: (d.data() as any)?.text,
-          createdAt: (d.data() as any)?.createdAt,
+          uid: (d.data() as DocumentData)?.uid as string,
+          displayName: (d.data() as DocumentData)?.displayName as string | undefined,
+          text: (d.data() as DocumentData)?.text as string,
+          createdAt: (d.data() as DocumentData)?.createdAt,
         }));
         const withCounts = await Promise.all(base.map(async (m) => {
           try {
             const agg = await getCountFromServer(collection(db, `groups/${slug}/messages/${m.id}/replies`));
-            return { ...m, replyCount: Number((agg.data() as any)?.count || 0) };
+            const c = (agg.data() as unknown as { count?: number })?.count ?? 0;
+            return { ...m, replyCount: Number(c) };
           } catch {
             return { ...m, replyCount: 0 };
           }
@@ -215,11 +228,15 @@ export default function GroupDetail() {
     const unsub = onSnapshot(
       query(collection(db, `users/${uid}/threadReads`), where("groupId", "==", slug)),
       (snap) => {
-        const map: Record<string, { lastReplyCount?: number; lastViewedAt?: any }> = {};
+        const map: Record<string, { lastReplyCount?: number; lastViewedAt?: unknown }> = {};
         snap.forEach((d) => {
-          const data = d.data() as any;
-          if (data?.messageId) {
-            map[data.messageId] = { lastReplyCount: data.lastReplyCount, lastViewedAt: data.lastViewedAt };
+          const data = d.data() as Record<string, unknown>;
+          const msgId = (data?.messageId as string) || "";
+          if (msgId) {
+            map[msgId] = {
+              lastReplyCount: data.lastReplyCount as number | undefined,
+              lastViewedAt: data.lastViewedAt,
+            };
           }
         });
         setThreadReads(map);
@@ -242,8 +259,9 @@ export default function GroupDetail() {
         createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid || null,
       });
       setNewTitle(""); setNewUrl(""); setNewNote("");
-    } catch (err: any) {
-      setError(err?.message || "Could not add resource.");
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || "Could not add resource.";
+      setError(msg);
     } finally { setSaving(false); }
   }
 
@@ -260,8 +278,9 @@ export default function GroupDetail() {
         updatedAt: serverTimestamp(), updatedBy: auth.currentUser?.uid || null,
       });
       setEditingId(null); setEditTitle(""); setEditUrl(""); setEditNote("");
-    } catch (err: any) {
-      setError(err?.message || "Could not save changes.");
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || "Could not save changes.";
+      setError(msg);
     } finally { setSaving(false); }
   }
 
@@ -271,9 +290,13 @@ export default function GroupDetail() {
 
   async function deleteResource(id: string) {
     setError(null);
-    if (!confirm("Delete this resource?")) return;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm("Delete this resource?")) return;
     try { await deleteDoc(doc(db, `groups/${slug}/resources/${id}`)); }
-    catch (err: any) { setError(err?.message || "Could not delete resource."); }
+    catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || "Could not delete resource.";
+      setError(msg);
+    }
   }
 
   // Messages: send & delete
@@ -294,11 +317,14 @@ export default function GroupDetail() {
   }
 
   async function deleteMessage(id: string) {
-    if (!confirm("Delete this message?")) return;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm("Delete this message?")) return;
     await deleteDoc(doc(db, `groups/${slug}/messages/${id}`));
   }
 
   // Thread handling
+  const threadUnsubRef = React.useRef<(() => void) | null>(null);
+
   async function openThread(m: Message) {
     setThreadFor(m);
     setThreadOpen(true);
@@ -306,7 +332,7 @@ export default function GroupDetail() {
       if (auth.currentUser) {
         const uid = auth.currentUser.uid;
         const agg = await getCountFromServer(collection(db, `groups/${slug}/messages/${m.id}/replies`));
-        const count = Number((agg.data() as any)?.count || 0);
+        const count = Number((agg.data() as { count?: number })?.count || 0);
         await setDoc(doc(db, `users/${uid}/threadReads/${slug}__${m.id}`), {
           groupId: slug,
           messageId: m.id,
@@ -314,30 +340,45 @@ export default function GroupDetail() {
           lastViewedAt: serverTimestamp(),
         }, { merge: true });
       }
-    } catch (e) { console.warn("threadReads write failed", e); }
+    } catch (e) {
+      // ignore
+    }
 
+    // teardown any previous
+    if (threadUnsubRef.current) {
+      threadUnsubRef.current();
+      threadUnsubRef.current = null;
+    }
     // Live subscribe to replies for this message
     const unsub = onSnapshot(
       query(collection(db, `groups/${slug}/messages/${m.id}/replies`), orderBy("createdAt", "asc")),
       (snap) => {
-        const list: Reply[] = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        }));
+        
+        const list: Reply[] = snap.docs.map((d) => {
+          const data = d.data() as DocumentData;
+          return {
+            id: d.id,
+            uid: (data?.uid as string) || "",
+            displayName: (data?.displayName as string) || undefined,
+            text: (data?.text as string) || "",
+            createdAt: data?.createdAt,
+          };
+        });
+
         setReplies(list);
       }
     );
-    // Teardown previous listener if any
-    (openThread as any)._cleanup && (openThread as any)._cleanup();
-    (openThread as any)._cleanup = () => unsub();
+    threadUnsubRef.current = unsub;
   }
 
   function closeThread() {
     setThreadOpen(false);
     setThreadFor(null);
     setReplies([]);
-    (openThread as any)._cleanup && (openThread as any)._cleanup();
-    (openThread as any)._cleanup = null;
+    if (threadUnsubRef.current) {
+      threadUnsubRef.current();
+      threadUnsubRef.current = null;
+    }
   }
 
   async function sendReply(e: React.FormEvent) {
@@ -355,15 +396,60 @@ export default function GroupDetail() {
       });
       setReplyText("");
     } catch (err) {
-      console.error("sendReply failed", err);
-      alert((err && (err as any).message) || "Could not post reply. Check Firestore rules and your connection.");
+      // eslint-disable-next-line no-alert
+      alert((err && (err as { message?: string }).message) || "Could not post reply. Check Firestore rules and your connection.");
     } finally { setReplySending(false); }
   }
 
-  // NEW: allow deleting a reply (author or admin)
-  async function deleteReply(parentId: string, replyId: string) {
-    if (!confirm("Delete this reply?")) return;
-    await deleteDoc(doc(db, `groups/${slug}/messages/${parentId}/replies/${replyId}`));
+  // Direct messages helpers
+  const dmCandidates = React.useMemo(() => {
+    const me = auth.currentUser?.uid;
+    const needle = dmFilter.trim().toLowerCase();
+    return members
+      .filter((m) => m.uid !== me)
+      .filter((m) => {
+        if (!needle) return true;
+        const name = (m.displayName || "").toLowerCase();
+        const email = (m.email || "").toLowerCase();
+        return name.includes(needle) || email.includes(needle) || m.uid.toLowerCase().includes(needle);
+      });
+  }, [members, dmFilter, auth.currentUser]);
+
+  async function sendDirectMessages(e: React.FormEvent) {
+    e.preventDefault();
+    setDmError("");
+    setDmSuccess(false);
+    const me = auth.currentUser?.uid;
+    if (!me) { setDmError("You must be signed in."); return; }
+    const text = dmText.trim();
+    if (!text) { setDmError("Enter a message."); return; }
+    const targets = Object.entries(dmSelections).filter(([, v]) => v).map(([k]) => k);
+    if (targets.length === 0) { setDmError("Select at least one member."); return; }
+    setDmSending(true);
+    try {
+      // send same message to each selected user; each uses pairId sort rule
+      // eslint-disable-next-line no-restricted-syntax
+      for (const toUid of targets) {
+        const pid = pairIdFor(me, toUid);
+        // eslint-disable-next-line no-await-in-loop
+        await addDoc(collection(db, `groups/${slug}/directMessages/${pid}/messages`), {
+          text,
+          from: me,
+          to: toUid,
+          displayName: auth.currentUser?.displayName || "Member",
+          createdAt: serverTimestamp(),
+        });
+      }
+      setDmText("");
+      setDmSelections({});
+      setDmSuccess(true);
+      window.setTimeout(() => setDmSuccess(false), 2000);
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message || "Failed to send DM(s).";
+      setDmError(msg);
+    } finally {
+      setDmSending(false);
+    }
   }
 
   if (loading) {
@@ -405,8 +491,122 @@ export default function GroupDetail() {
         {group.description && <p className="text-sm text-text2 mt-2">{group.description}</p>}
 
         {/* Resources */}
-        <section className="mt-6">
-          <GroupResources groupId={slug} />
+        <section className="mt-6 rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-accent">Resources</h2>
+          </div>
+
+          {/* Editor */}
+          {isAdmin && (
+            <form onSubmit={handleAddResource} className="mt-3 grid gap-2 sm:grid-cols-6">
+              <input
+                className="sm:col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                placeholder="Title"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+              />
+              <input
+                className="sm:col-span-3 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                placeholder="https://..."
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+              />
+              <div className="sm:col-span-6">
+                <textarea
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  placeholder="Optional note (description)…"
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                />
+              </div>
+              <div className="sm:col-span-6">
+                <button
+                  className="rounded-lg bg-[#919FAA] hover:opacity-90 px-4 py-2 text-white text-sm"
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Add resource"}
+                </button>
+                {error && <span className="ml-3 text-sm text-rose-700">{error}</span>}
+              </div>
+            </form>
+          )}
+
+          {/* List */}
+          <ul className="mt-3 divide-y divide-border">
+            {resources.map((r) => (
+              <li key={r.id} className="py-2 flex items-center justify-between gap-3">
+                <div>
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-accent underline underline-offset-2 break-all"
+                  >
+                    {r.title}
+                  </a>
+                  {r.note && <p className="text-xs text-text2 mt-1">{r.note}</p>}
+                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(r)}
+                      className="text-xs rounded-lg border border-border px-2 py-1 hover:bg-muted"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteResource(r.id)}
+                      className="text-xs rounded-lg border border-rose-300 text-rose-700 px-2 py-1 hover:bg-rose-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+            {resources.length === 0 && <li className="py-2 text-sm text-text2">No resources yet.</li>}
+          </ul>
+
+          {/* Inline editor when editing */}
+          {editingId && (
+            <form onSubmit={(e) => { e.preventDefault(); void saveEdit(); }} className="mt-3 grid gap-2 sm:grid-cols-6">
+              <input
+                className="sm:col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                placeholder="Title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+              />
+              <input
+                className="sm:col-span-3 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                placeholder="https://..."
+                value={editUrl}
+                onChange={(e) => setEditUrl(e.target.value)}
+              />
+              <div className="sm:col-span-6">
+                <textarea
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+                  placeholder="Optional note (description)…"
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                />
+              </div>
+              <div className="sm:col-span-6 flex items-center gap-2">
+                <button className="rounded-lg bg-[#919FAA] hover:opacity-90 px-4 py-2 text-white text-sm" disabled={saving}>
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditingId(null); setEditTitle(""); setEditUrl(""); setEditNote(""); }}
+                  className="text-sm rounded-lg border border-border px-3 py-2 hover:bg-muted"
+                >
+                  Cancel
+                </button>
+                {error && <span className="text-sm text-rose-700">{error}</span>}
+              </div>
+            </form>
+          )}
         </section>
 
         {/* Messages */}
@@ -427,10 +627,15 @@ export default function GroupDetail() {
                       </div>
                       <div className="flex items-center gap-2">
                         {hasNew && count > 0 && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "#C5B175", color: "#282F36" }}>New replies</span>
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                            style={{ backgroundColor: "#919FAA", color: "#ffffff" }}
+                          >
+                            New replies
+                          </span>
                         )}
                         <button
-                          onClick={() => openThread(m)}
+                          onClick={() => { void openThread(m); }}
                           className="text-xs rounded-lg border border-border px-2 py-1 hover:bg-muted"
                           title="View thread / Reply"
                         >
@@ -438,7 +643,7 @@ export default function GroupDetail() {
                         </button>
                         {(isAdmin || auth.currentUser?.uid === m.uid) && (
                           <button
-                            onClick={() => deleteMessage(m.id)}
+                            onClick={() => { void deleteMessage(m.id); }}
                             className="text-xs rounded-lg border border-rose-300 text-rose-700 px-2 py-1 hover:bg-rose-50 h-fit"
                           >
                             Delete
@@ -494,15 +699,8 @@ export default function GroupDetail() {
                   ) : (
                     replies.map((r) => (
                       <div key={r.id} className="rounded-lg border border-slate-700 px-3 py-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm"><span className="font-medium">{r.displayName || "Member"}</span></p>
-                            <p className="text-sm text-slate-200 whitespace-pre-wrap">{r.text}</p>
-                          </div>
-                          {(isAdmin || auth.currentUser?.uid === r.uid) && (
-                            <button onClick={() => deleteReply(threadFor.id, r.id)} className="text-xs rounded-lg border border-rose-300 text-rose-700 px-2 py-1 hover:bg-rose-50 h-fit">Delete</button>
-                          )}
-                        </div>
+                        <p className="text-sm"><span className="font-medium">{r.displayName || "Member"}</span></p>
+                        <p className="text-sm text-slate-200 whitespace-pre-wrap">{r.text}</p>
                       </div>
                     ))
                   )}
@@ -527,6 +725,66 @@ export default function GroupDetail() {
               </div>
             </div>
           )}
+        </section>
+
+        {/* Direct Messages */}
+        <section className="mt-6 rounded-xl border border-border bg-card p-5">
+          <h2 className="text-lg font-semibold text-accent">Direct Messages</h2>
+          <p className="text-sm text-text2 mt-1">Select one or more members and send a private message.</p>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-6">
+            <input
+              type="text"
+              value={dmFilter}
+              onChange={(e) => setDmFilter(e.target.value)}
+              placeholder="Search members…"
+              className="sm:col-span-3 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+              aria-label="Filter members for DM"
+            />
+            <div className="sm:col-span-3 max-h-48 overflow-auto rounded-lg border border-border bg-background p-2">
+              {dmCandidates.length === 0 ? (
+                <p className="text-xs text-text2">No members to message.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {dmCandidates.map((m) => (
+                    <li key={m.uid} className="flex items-center gap-2">
+                      <input
+                        id={`dm-${m.uid}`}
+                        type="checkbox"
+                        checked={!!dmSelections[m.uid]}
+                        onChange={(e) => setDmSelections((prev) => ({ ...prev, [m.uid]: e.target.checked }))}
+                        className="h-4 w-4"
+                      />
+                      <label htmlFor={`dm-${m.uid}`} className="text-sm">
+                        {m.displayName || m.uid}{m.email ? ` • ${m.email}` : ""}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          <form onSubmit={sendDirectMessages} className="mt-3 grid gap-2 sm:grid-cols-6">
+            <textarea
+              value={dmText}
+              onChange={(e) => setDmText(e.target.value)}
+              placeholder="Write a private message…"
+              className="sm:col-span-5 min-h-[3.25rem] rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+            />
+            <div className="sm:col-span-1">
+              <button
+                type="submit"
+                disabled={dmSending || !hasDmSelection || !dmText.trim()}
+                className="w-full rounded-lg bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-800 disabled:opacity-60"
+                title={!hasDmSelection ? "Select at least one member" : undefined}
+              >
+                {dmSending ? "Sending…" : "Send DM"}
+              </button>
+            </div>
+          </form>
+          {dmError && <p className="mt-2 text-sm text-rose-700">{dmError}</p>}
+          {dmSuccess && <p className="mt-2 text-sm text-emerald-700">Message sent.</p>}
         </section>
 
         {/* Team */}
