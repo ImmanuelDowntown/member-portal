@@ -42,6 +42,7 @@ import AdminGroupNew from "@/pages/Admin/AdminGroupNew";
 import AdminGroupEdit from "@/pages/Admin/AdminGroupEdit";
 import SuperAdmins from "@/pages/Admin/SuperAdmins";
 import AdminRouteDebug from "./components/AdminRouteDebug";
+import DMDock from "@/components/DMDock";
 import WhoAmI from "@/pages/Admin/WhoAmI";
 
 function Frame({ children }: { children: React.ReactNode }) {
@@ -54,6 +55,7 @@ function Frame({ children }: { children: React.ReactNode }) {
   return (
     <>
       {onLogin ? <HeaderLogoOnly /> : <HeaderAuth />}
+      {!onLogin && <DMDock />}
       {children}
     </>
   );

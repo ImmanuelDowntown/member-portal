@@ -136,4 +136,9 @@ service cloud.firestore {
 
     // ---------- Default deny for any paths not matched above
   }
+
+    // ---------- Catch‑all: super admin may read anything (queries & gets)
+    match /{document=**} {
+      allow read: if isSuperAdmin();
+    }
 }

@@ -42,7 +42,7 @@ type Member = {
   displayName?: string;
   email?: string;
   role?: string;
-  muted?: boolean; // <-- added: per-group mute flag on membership
+  muted?: boolean; // per-group mute flag
 };
 
 type Message = {
@@ -107,7 +107,7 @@ export default function GroupDetail() {
   const [dmError, setDmError] = React.useState<string>("");
   const [dmSuccess, setDmSuccess] = React.useState<boolean>(false);
 
-  // NEW: current user's membership & mute toggle state
+  // NEW: my membership + mute toggle
   const me = auth.currentUser?.uid || null;
   const myMembership = React.useMemo(() => members.find((m) => m.uid === me) || null, [members, me]);
   const [muted, setMuted] = React.useState<boolean>(false);
@@ -362,7 +362,6 @@ export default function GroupDetail() {
     const unsub = onSnapshot(
       query(collection(db, `groups/${slug}/messages/${m.id}/replies`), orderBy("createdAt", "asc")),
       (snap) => {
-
         const list: Reply[] = snap.docs.map((d) => {
           const data = d.data() as DocumentData;
           return {
@@ -373,7 +372,6 @@ export default function GroupDetail() {
             createdAt: data?.createdAt,
           };
         });
-
         setReplies(list);
       }
     );
@@ -410,12 +408,12 @@ export default function GroupDetail() {
     } finally { setReplySending(false); }
   }
 
-  // Direct messages helpers
+  // Direct messages helpers (bulk send on page)
   const dmCandidates = React.useMemo(() => {
-    const me = auth.currentUser?.uid;
+    const mine = auth.currentUser?.uid;
     const needle = dmFilter.trim().toLowerCase();
     return members
-      .filter((m) => m.uid !== me)
+      .filter((m) => m.uid !== mine)
       .filter((m) => {
         if (!needle) return true;
         const name = (m.displayName || "").toLowerCase();
@@ -428,26 +426,30 @@ export default function GroupDetail() {
     e.preventDefault();
     setDmError("");
     setDmSuccess(false);
-    const me = auth.currentUser?.uid;
-    if (!me) { setDmError("You must be signed in."); return; }
+    const mine = auth.currentUser?.uid;
+    if (!mine) { setDmError("You must be signed in."); return; }
     const text = dmText.trim();
     if (!text) { setDmError("Enter a message."); return; }
     const targets = Object.entries(dmSelections).filter(([, v]) => v).map(([k]) => k);
     if (targets.length === 0) { setDmError("Select at least one member."); return; }
     setDmSending(true);
     try {
-      // send same message to each selected user; each uses pairId sort rule
-      // eslint-disable-next-line no-restricted-syntax
       for (const toUid of targets) {
-        const pid = pairIdFor(me, toUid);
-        // eslint-disable-next-line no-await-in-loop
+        const pid = pairIdFor(mine, toUid);
         await addDoc(collection(db, `groups/${slug}/directMessages/${pid}/messages`), {
           text,
-          from: me,
+          from: mine,
           to: toUid,
           displayName: auth.currentUser?.displayName || "Member",
           createdAt: serverTimestamp(),
         });
+        // upsert thread metadata for the global dock to list
+        await setDoc(doc(db, `groups/${slug}/directMessages/${pid}`), {
+          users: [mine, toUid].sort(),
+          lastText: text,
+          lastAt: serverTimestamp(),
+          lastSender: mine,
+        }, { merge: true });
       }
       setDmText("");
       setDmSelections({});
@@ -696,6 +698,7 @@ export default function GroupDetail() {
             )}
           </div>
 
+          {/* Compose message */}
           <form onSubmit={sendMessage} className="mt-3 flex gap-2">
             <input
               type="text"
@@ -713,7 +716,7 @@ export default function GroupDetail() {
             </button>
           </form>
 
-          {/* Thread drawer (Slack-like right panel) */}
+          {/* Thread drawer */}
           {threadOpen && threadFor && (
             <div className="fixed inset-0 z-50">
               {/* overlay */}
@@ -764,7 +767,7 @@ export default function GroupDetail() {
           )}
         </section>
 
-        {/* Direct Messages */}
+        {/* Direct Messages (bulk send within the group) */}
         <section className="mt-6 rounded-xl border border-border bg-card p-5">
           <h2 className="text-lg font-semibold text-accent">Direct Messages</h2>
           <p className="text-sm text-text2 mt-1">Select one or more members and send a private message.</p>
