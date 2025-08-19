@@ -33,14 +33,18 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onMembershipApproved = exports.onMembershipRequestCreated = exports.grantGroupAdminByEmail = exports.onGroupMessageCreated = void 0;
+exports.registerPushToken = exports.sendTestPush = exports.onResourceCreated = exports.onMembershipApproved = exports.onMembershipRequestCreated = exports.grantGroupAdminByEmail = exports.onGroupReplyCreate = exports.onGroupMessageCreate = void 0;
 // functions/src/index.ts
 const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions/v1"));
 admin.initializeApp();
 const db = admin.firestore();
 var onGroupMessage_1 = require("./onGroupMessage");
-Object.defineProperty(exports, "onGroupMessageCreated", { enumerable: true, get: function () { return onGroupMessage_1.onGroupMessageCreated; } });
+Object.defineProperty(exports, "onGroupMessageCreate", { enumerable: true, get: function () { return onGroupMessage_1.onGroupMessageCreate; } });
+Object.defineProperty(exports, "onGroupReplyCreate", { enumerable: true, get: function () { return onGroupMessage_1.onGroupReplyCreate; } });
+/**
+ * Grant group admin by email (v1 callable)
+ */
 exports.grantGroupAdminByEmail = functions
     .region("us-central1")
     .https.onCall(async (data, context) => {
@@ -97,3 +101,9 @@ exports.onMembershipApproved = functions.firestore
         source: "function",
     });
 });
+// Expose v2 callables and triggers (single export each; avoid duplicates)
+var onResourceCreated_1 = require("./onResourceCreated");
+Object.defineProperty(exports, "onResourceCreated", { enumerable: true, get: function () { return onResourceCreated_1.onResourceCreated; } });
+var notifications_1 = require("./notifications");
+Object.defineProperty(exports, "sendTestPush", { enumerable: true, get: function () { return notifications_1.sendTestPush; } });
+Object.defineProperty(exports, "registerPushToken", { enumerable: true, get: function () { return notifications_1.registerPushToken; } });

@@ -1,3 +1,4 @@
+importScripts('/firebase-messaging-sw.js');
 // Minimal service worker for PWA install + basic offline fallback
 const CACHE = 'immanuel-portal-v1';
 const ASSETS = ['/', '/index.html', '/manifest.webmanifest'];

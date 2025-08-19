@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "immanuel-app"
-  }
+    "default": "immanuel-app",
+    "\\": "immanuel-app"
+  },
+  "targets": {},
+  "etags": {}
 }

@@ -3,9 +3,6 @@
 │   └── dashboard-widgets-pack
 │       ├── README-Dashboard-Widgets.md
 │       └── src
-│           ├── components
-│           ├── pages
-│           └── types
 ├── favicon.svg
 ├── firebase.json
 ├── firestore.indexes.json
@@ -13,11 +10,13 @@
 ├── functions
 │   ├── lib
 │   │   ├── index.js
+│   │   ├── notifications.js
 │   │   └── onGroupMessage.js
 │   ├── package-lock.json
 │   ├── package.json
 │   ├── src
 │   │   ├── index.ts
+│   │   ├── notifications.ts
 │   │   └── onGroupMessage.ts
 │   └── tsconfig.json
 ├── gitattributes
@@ -31,6 +30,7 @@
 ├── project-tree.txt
 ├── public
 │   ├── apple-touch-icon.png
+│   ├── firebase-messaging-sw.js
 │   ├── icons
 │   │   ├── icon-192.png
 │   │   ├── icon-512.png
@@ -48,22 +48,13 @@
 │   │   ├── AdminRoute.tsx
 │   │   ├── AdminRouteDebug.tsx
 │   │   ├── auth
-│   │   │   └── PostLoginRedirect.tsx
 │   │   ├── AuthRoute.tsx
 │   │   ├── dashboard
-│   │   │   ├── AdminTools.tsx
-│   │   │   ├── Announcements.tsx
-│   │   │   ├── MyGroups.tsx
-│   │   │   ├── Notifications.tsx
-│   │   │   └── UpcomingEvents.tsx
 │   │   ├── GroupAdminPanel.tsx
 │   │   ├── GroupAdminRoute.tsx
 │   │   ├── GroupCard.tsx
 │   │   ├── GroupJoinButton.tsx
 │   │   ├── groups
-│   │   │   ├── GroupChat.tsx
-│   │   │   ├── GroupResources.tsx
-│   │   │   └── TeamList.tsx
 │   │   ├── Header.tsx
 │   │   ├── HeaderAuth.tsx
 │   │   ├── Loader.tsx
@@ -77,28 +68,17 @@
 │   │   └── useUserProfile.ts
 │   ├── index.css
 │   ├── lib
-│   │   └── firebase.ts
+│   │   ├── firebase.ts
+│   │   └── messaging.ts
 │   ├── main.tsx
 │   ├── pages
 │   │   ├── Admin
-│   │   │   ├── AdminGroupEdit.tsx
-│   │   │   ├── AdminGroupEvents.tsx
-│   │   │   ├── AdminGroupMembers.tsx
-│   │   │   ├── AdminGroupNew.tsx
-│   │   │   ├── AdminGroupRequests.tsx
-│   │   │   ├── AdminGroupsIndex.tsx
-│   │   │   ├── AdminUsersIndex.tsx
-│   │   │   ├── GrantGroupAdminByEmail.tsx
-│   │   │   ├── GroupAdminBootstrap.tsx
-│   │   │   ├── SeedGroups.tsx
-│   │   │   ├── SeedGroupsDEBUG.tsx
-│   │   │   ├── SuperAdmins.tsx
-│   │   │   └── WhoAmI.tsx
 │   │   ├── Dashboard.tsx
 │   │   ├── Events.tsx
 │   │   ├── ForgotPassword.tsx
 │   │   ├── Forums.tsx
 │   │   ├── GroupDetail.tsx
+│   │   ├── GroupDirectMessages.tsx
 │   │   ├── Groups.tsx
 │   │   ├── GroupsExplore.tsx
 │   │   ├── Login.tsx
@@ -120,4 +100,4 @@
 ├── vercel.json
 └── vite.config.ts
 
-25 directories, 96 files
+22 directories, 79 files

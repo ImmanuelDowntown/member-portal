@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -21,7 +20,7 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/users/$(uid())/memberships/$(groupId));
     }
 
-    // ---------- Sunday Resources (unchanged)
+    // ---------- Sunday Resources
     match /sundayResources/{resId} {
       allow read: if isSignedIn();
       allow create, update, delete: if isSuperAdmin();
@@ -41,7 +40,7 @@ service cloud.firestore {
         allow write: if isGroupAdmin(groupId) || isSuperAdmin();
       }
 
-      // Resources (links, docs, videos) for this group  [Option A: admins-only writes]
+      // Resources (links, docs, videos) for this group
       match /resources/{resId} {
         // Members can read; group admins & super admins can create/update/delete
         allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
@@ -52,18 +51,7 @@ service cloud.firestore {
       match /messages/{msgId} {
         allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
         allow create: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
-        // Allow author OR admins to update/delete their own message
         allow update, delete: if isGroupAdmin(groupId) || isSuperAdmin() || (isSignedIn() && request.auth.uid == resource.data.uid);
-
-        // --- Threaded replies under each message ---
-        match /replies/{replyId} {
-          // Same visibility as messages
-          allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
-          // Members can create replies; admins too
-          allow create: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
-          // Author OR admins can update/delete a reply
-          allow update, delete: if isGroupAdmin(groupId) || isSuperAdmin() || (isSignedIn() && request.auth.uid == resource.data.uid);
-        }
       }
 
       // Direct messages scoped under the group
@@ -81,8 +69,8 @@ service cloud.firestore {
       // Group admins subcollection
       match /groupAdmins/{adminUid} {
         allow read: if isGroupAdmin(groupId) || isSuperAdmin();
-        // Allow SUPER admins or current group admins to grant/revoke admins
-        allow write: if isGroupAdmin(groupId) || isSuperAdmin();
+        // Only SUPER admins can grant/revoke group admins
+        allow write: if isSuperAdmin();
       }
 
       // Membership requests
@@ -109,10 +97,8 @@ service cloud.firestore {
 
     // ---------- Users (per-user data)
     match /users/{userUid} {
-      // CHANGE: allow super admins to read any user profile document
-      allow read: if isSignedIn() && (userUid == uid() || isSuperAdmin());
-      // Users manage their own profile document
-      allow create, update, delete: if isSignedIn() && userUid == uid();
+      // Users can manage their own profile doc; SUPER admins can read/manage all users
+      allow read, create, update, delete: if isSignedIn() && (userUid == uid() || isSuperAdmin());
 
       // Memberships mirror (used when approving)
       match /memberships/{groupId} {
@@ -128,15 +114,17 @@ service cloud.firestore {
         );
       }
 
-      // Notifications
+      // Notifications for the user
       match /notifications/{notifId} {
-        // Read/update/delete by the owner; creation happens via Admin SDK (Cloud Functions)
-        allow read, update, delete: if isSignedIn() && userUid == uid();
+        // Read/update/delete by the owner; SUPER admins may also read for support
+        allow read, update, delete: if isSignedIn() && (userUid == uid() || isSuperAdmin());
       }
 
-      // Per-user thread reads for the "New replies" pill
-      match /threadReads/{docId} {
-        allow read, write: if isSignedIn() && userUid == uid();
+      // Push tokens saved for web push delivery
+      match /pushTokens/{tokenId} {
+        // Owner or SUPER admin can read tokens; owner can create/update/delete their own token docs
+        allow read: if isSignedIn() && (userUid == uid() || isSuperAdmin());
+        allow create, update, delete: if isSignedIn() && (userUid == uid() || isSuperAdmin());
       }
     }
 
@@ -145,5 +133,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && (adminUid == uid() || isSuperAdmin());
       allow write: if isSuperAdmin();
     }
+
+    // ---------- Default deny for any paths not matched above
   }
 }

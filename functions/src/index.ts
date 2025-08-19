@@ -6,6 +6,9 @@ const db = admin.firestore();
 
 export { onGroupMessageCreate, onGroupReplyCreate } from "./onGroupMessage";
 
+/**
+ * Grant group admin by email (v1 callable)
+ */
 export const grantGroupAdminByEmail = functions
   .region("us-central1")
   .https.onCall(async (data, context) => {
@@ -28,8 +31,6 @@ export const grantGroupAdminByEmail = functions
     return { ok: true, uid: target.uid };
   });
 
-
-
 /**
  * When a membership request is created under groups/{groupId}/membershipRequests/{uid},
  * write a groupEvents entry so admins can see an audit trail or trigger notifications.
@@ -37,7 +38,7 @@ export const grantGroupAdminByEmail = functions
 export const onMembershipRequestCreated = functions.firestore
   .document("groups/{groupId}/membershipRequests/{uid}")
   .onCreate(async (snap, ctx) => {
-    const { groupId, uid } = ctx.params;
+    const { groupId, uid } = ctx.params as { groupId: string; uid: string };
     const data = snap.data() || {};
     await db.collection("groups").doc(groupId).collection("groupEvents").add({
       type: "request_created",
@@ -55,7 +56,7 @@ export const onMembershipRequestCreated = functions.firestore
 export const onMembershipApproved = functions.firestore
   .document("users/{uid}/memberships/{groupId}")
   .onWrite(async (change, ctx) => {
-    const { groupId, uid } = ctx.params;
+    const { groupId, uid } = ctx.params as { groupId: string; uid: string };
     if (!change.after.exists) return; // deleted
     await db.collection("groups").doc(groupId).collection("groupEvents").add({
       type: "membership_approved",
@@ -64,3 +65,7 @@ export const onMembershipApproved = functions.firestore
       source: "function",
     });
   });
+
+// Expose v2 callables and triggers (single export each; avoid duplicates)
+export { onResourceCreated } from "./onResourceCreated";
+export { sendTestPush, registerPushToken } from "./notifications";

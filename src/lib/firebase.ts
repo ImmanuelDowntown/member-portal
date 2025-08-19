@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getMessaging, isSupported as isMessagingSupported, type Messaging } from 'firebase/messaging';
 
 // Build config from Vite env
 const firebaseConfig = {
@@ -45,3 +46,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 // Expose for one-off debugging in the browser console (optional)
 // @ts-ignore
 if (typeof window !== "undefined") window.__FIREBASE_CONFIG__ = firebaseConfig;
+
+/**
+ * Optionally obtain Firebase Messaging instance if the browser supports it.
+ * Returns null on unsupported platforms (e.g., some iOS Safari versions or SSR).
+ */
+export async function getMessagingIfSupported(): Promise<Messaging | null> {
+  try {
+    const supported = await isMessagingSupported();
+    return supported ? getMessaging(app) : null;
+  } catch {
+    return null;
+  }
+}
