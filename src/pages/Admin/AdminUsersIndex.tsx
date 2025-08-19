@@ -6,7 +6,10 @@ import {
   getDocs,
   doc,
   getDoc,
+  setDoc,
   type DocumentData,
+  serverTimestamp,
+  deleteField,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
@@ -18,6 +21,7 @@ type UserRow = {
   displayName?: string;
   email?: string;
   status?: string; // active | inactive | deleted (if present on user doc)
+  isCommunityApproved?: boolean;
   groups: Array<{ id: string; name: string }>;
 };
 
@@ -69,6 +73,7 @@ export default function AdminUsersIndex() {
             displayName: (data?.displayName as string) || (data?.name as string) || "",
             email: (data?.email as string) || "",
             status: (data?.status as string) || "active",
+            isCommunityApproved: Boolean(data?.isCommunityApproved),
             groups: [],
           };
         });
@@ -166,6 +171,31 @@ export default function AdminUsersIndex() {
     }
   }
 
+  async function handleToggleApproved(uid: string, next: boolean) {
+    if (!isSuper) return;
+    setBusy(`approve:${uid}`);
+    try {
+      const approver = auth.currentUser?.uid || "";
+      const patch = next
+        ? {
+            isCommunityApproved: true,
+            dmApprovedAt: serverTimestamp(),
+            dmApprovedBy: approver,
+          }
+        : {
+            isCommunityApproved: false,
+            dmApprovedAt: deleteField(),
+            dmApprovedBy: deleteField(),
+          };
+      await setDoc(doc(db, "users", uid), patch, { merge: true });
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, isCommunityApproved: next } : u)));
+    } catch (e) {
+      alert("Failed to update approval.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto p-6">
@@ -204,6 +234,9 @@ export default function AdminUsersIndex() {
                   <div className="text-sm text-slate-900 truncate">{u.displayName || u.uid}</div>
                   {u.email && <div className="text-xs text-slate-600 truncate">{u.email}</div>}
                   <div className="text-[11px] text-slate-500 mt-0.5">Status: {u.status || "active"}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    DM access: <b>{u.isCommunityApproved ? "Approved" : "Not approved"}</b>
+                  </div>
                 </div>
                 <div className="col-span-3 min-w-0">
                   <div className="flex flex-wrap gap-1">
@@ -225,6 +258,16 @@ export default function AdminUsersIndex() {
                 </div>
                 <div className="col-span-2 text-right">
                   <div className="inline-flex flex-col gap-1 items-end">
+                    <label className="inline-flex items-center gap-2 text-xs select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!u.isCommunityApproved}
+                        onChange={(e) => void handleToggleApproved(u.uid, e.target.checked)}
+                        disabled={!isSuper || !!busy}
+                      />
+                      <span>Approved for DMs</span>
+                    </label>
+
                     <Link
                       to={`/admin/users?uid=${encodeURIComponent(u.uid)}`}
                       className="text-xs rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-100"

@@ -1,9 +1,10 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---------- Helpers
+    // ---------- Helper functions ----------
     function isSignedIn() {
       return request.auth != null;
     }
@@ -13,132 +14,136 @@ service cloud.firestore {
     function isSuperAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(uid()));
     }
+    function isApproved() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(uid())).data.isCommunityApproved == true;
+    }
     function isGroupAdmin(groupId) {
-      return isSignedIn() && exists(/databases/$(database)/documents/groups/$(groupId)/groupAdmins/$(uid()));
+      // Group admins tracked at groups/{groupId}/admins/{uid}
+      return isSignedIn() && exists(/databases/$(database)/documents/groups/$(groupId)/admins/$(uid()));
     }
     function isMemberOf(groupId) {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(uid())/memberships/$(groupId));
+      // Membership tracked at groups/{groupId}/members/{uid}
+      return isSignedIn() && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(uid()));
     }
 
-    // ---------- Sunday Resources
-    match /sundayResources/{resId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isSuperAdmin();
+    // ---------- Users ----------
+    match /users/{userUid} {
+      // Read: user reads own doc; super admin can read any
+      allow get: if isSignedIn() && (userUid == uid() || isSuperAdmin());
+      // List: super admin may list
+      allow list: if isSuperAdmin();
+
+      // Write: user may update own profile; super admin can update any
+      allow create, update: if isSignedIn() && (userUid == uid() || isSuperAdmin());
+      // Delete: super admin only (use function to soft-delete or admin tool)
+      allow delete: if isSuperAdmin();
+
+      // Subcollection: user's memberships (used by Groups page, DM compose)
+      match /memberships/{groupId} {
+        // Read/list: owner or super admin
+        allow get, list: if isSignedIn() && (userUid == uid() || isSuperAdmin());
+        // Create/update/delete: owner; or group admin/super admin
+        allow create, update, delete: if isSignedIn() && (userUid == uid() || isGroupAdmin(groupId) || isSuperAdmin());
+      }
+
+      // Optional: thread read markers for message threads
+      match /threadReads/{key} {
+        allow read, list: if isSignedIn() && userUid == uid();
+        allow create, update, delete: if isSignedIn() && userUid == uid();
+      }
     }
 
-    // ---------- Groups root
+    // ---------- Groups (public read; writes via admins) ----------
     match /groups/{groupId} {
-      // Anyone signed in can read group metadata (for Explore, etc.)
-      allow read: if isSignedIn();
+      // Group metadata is readable to signed-in users (adjust to "true" if public site)
+      allow get, list: if isSignedIn() || isSuperAdmin();
 
-      // Only SUPER admins can create/update/delete groups
-      allow create, update, delete: if isSuperAdmin();
+      // Group core write operations (admins only)
+      allow create, update, delete: if isSuperAdmin() || isGroupAdmin(groupId);
 
-      // Members subcollection
+      // Memberships under group (UID docs)
       match /members/{memberUid} {
-        allow read: if isSignedIn();
-        allow write: if isGroupAdmin(groupId) || isSuperAdmin();
+        // Members can read the roster of a group they belong to; admins & super admins too
+        allow get, list: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+        // Writes by group admins or super admin
+        allow create, update, delete: if isSignedIn() && (isGroupAdmin(groupId) || isSuperAdmin());
       }
 
-      // Resources (links, docs, videos) for this group
-      match /resources/{resId} {
-        // Members can read; group admins & super admins can create/update/delete
-        allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
-        allow create, update, delete: if isGroupAdmin(groupId) || isSuperAdmin();
+      // Group resources (docs/files metadata)
+      match /resources/{resourceId} {
+        // Anyone signed-in may read group resources
+        allow get, list: if isSignedIn();
+        // Create/update/delete by group admin or super admin
+        allow create, update, delete: if isSignedIn() && (isGroupAdmin(groupId) || isSuperAdmin());
       }
 
-      // Group chat messages
-      match /messages/{msgId} {
-        allow read: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+      // Group messages (feed)
+      match /messages/{messageId} {
+        // Members, group admins, or super admins can read & create
+        allow get, list: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
         allow create: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
-        allow update, delete: if isGroupAdmin(groupId) || isSuperAdmin() || (isSignedIn() && request.auth.uid == resource.data.uid);
-      }
+        // Edit/delete your own message or admin/super
+        allow update, delete: if isSignedIn()
+          && (
+            (resource.data.uid == uid()) ||
+            isGroupAdmin(groupId) || isSuperAdmin()
+          );
 
-      // Direct messages scoped under the group
-      match /directMessages/{pairId} {
-        match /messages/{dmId} {
-          // Only the two participants in the pair can read/write; also require membership
-          allow read, create: if isSignedIn()
-            && isMemberOf(groupId)
-            && (pairId.matches('^' + uid() + '_.+$') || pairId.matches('^.+_' + uid() + '$'));
-          allow delete: if isSignedIn()
-            && (pairId.matches('^' + uid() + '_.+$') || pairId.matches('^.+_' + uid() + '$') || isGroupAdmin(groupId) || isSuperAdmin());
+        // Replies to a message
+        match /replies/{replyId} {
+          allow get, list: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+          allow create: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+          allow update, delete: if isSignedIn()
+            && (
+              (resource.data.uid == uid()) ||
+              isGroupAdmin(groupId) || isSuperAdmin()
+            );
         }
       }
 
-      // Group admins subcollection
-      match /groupAdmins/{adminUid} {
-        allow read: if isGroupAdmin(groupId) || isSuperAdmin();
-        // Only SUPER admins can grant/revoke group admins
-        allow write: if isSuperAdmin();
-      }
+      // Direct messages metadata: groups/{groupId}/directMessages/{pairId}
+      match /directMessages/{pairId} {
+        // Read/list allowed only for approved users who are participants; or super admin
+        allow get, list: if isSignedIn() && (isApproved() || isSuperAdmin())
+          && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin())
+          && request.auth.uid in resource.data.users;
 
-      // Membership requests
-      match /membershipRequests/{requestUid} {
-        // User can read their own request; group/super admins can read all
-        allow read: if isSignedIn() && (
-          requestUid == uid() ||
-          isGroupAdmin(groupId) ||
-          isSuperAdmin()
-        );
-        // User can create/cancel their own; admins can manage any
-        allow create, update, delete: if isSignedIn() && (
-          requestUid == uid() ||
-          isGroupAdmin(groupId) ||
-          isSuperAdmin()
-        );
-      }
+        // Create/update by participants (must include self in `users`), and approved or super admin
+        allow create, update: if isSignedIn() && (isApproved() || isSuperAdmin())
+          && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin())
+          && request.resource.data.users.hasAll([request.auth.uid]);
 
-      // Events / audit log
-      match /groupEvents/{eventId} {
-        allow read, write: if isGroupAdmin(groupId) || isSuperAdmin();
-      }
-    }
+        // Messages for a DM thread
+        match /messages/{msgId} {
+          // Read/list: participant only; and approved or super admin
+          allow get, list: if isSignedIn() && (isApproved() || isSuperAdmin())
+            && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin())
+            && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)/directMessages/$(pairId)).data.users;
 
-    // ---------- Users (per-user data)
-    match /users/{userUid} {
-      // Users can manage their own profile doc; SUPER admins can read/manage all users
-      allow read, create, update, delete: if isSignedIn() && (userUid == uid() || isSuperAdmin());
+          // Create: sender must be the signed-in user; and approved or super admin
+          allow create: if isSignedIn() && (isApproved() || isSuperAdmin())
+            && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin())
+            && request.resource.data.from == uid();
 
-      // Memberships mirror (used when approving)
-      match /memberships/{groupId} {
-        allow read, write: if isSignedIn() && (userUid == uid() || isGroupAdmin(groupId) || isSuperAdmin());
-      }
-
-      // User-scoped requests mirror (optional)
-      match /membershipRequests/{groupId} {
-        allow read, write, delete: if isSignedIn() && (
-          userUid == uid() ||
-          isGroupAdmin(groupId) ||
-          isSuperAdmin()
-        );
-      }
-
-      // Notifications for the user
-      match /notifications/{notifId} {
-        // Read/update/delete by the owner; SUPER admins may also read for support
-        allow read, update, delete: if isSignedIn() && (userUid == uid() || isSuperAdmin());
-      }
-
-      // Push tokens saved for web push delivery
-      match /pushTokens/{tokenId} {
-        // Owner or SUPER admin can read tokens; owner can create/update/delete their own token docs
-        allow read: if isSignedIn() && (userUid == uid() || isSuperAdmin());
-        allow create, update, delete: if isSignedIn() && (userUid == uid() || isSuperAdmin());
+          // Updates/deletes are not generally allowed
+          allow update: if false;
+          allow delete: if isSignedIn() && (isApproved() || isSuperAdmin())
+            && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin())
+            && (resource.data.from == uid() || isSuperAdmin());
+        }
       }
     }
 
-    // ---------- Super admin registry
+    // ---------- Super admin registry ----------
     match /admins/{adminUid} {
-      allow read: if isSignedIn() && (adminUid == uid() || isSuperAdmin());
+      allow get: if isSignedIn() && (adminUid == uid() || isSuperAdmin());
+      allow list: if isSuperAdmin();
       allow write: if isSuperAdmin();
     }
 
-    // ---------- Default deny for any paths not matched above
-  }
-
-    // ---------- Catch‑all: super admin may read anything (queries & gets)
+    // ---------- Catch‑all: super admin may read anything (queries & gets) ----------
     match /{document=**} {
       allow read: if isSuperAdmin();
     }
+  }
 }
