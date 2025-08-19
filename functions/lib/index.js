@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerPushToken = exports.sendTestPush = exports.onResourceCreated = exports.onMembershipApproved = exports.onMembershipRequestCreated = exports.grantGroupAdminByEmail = exports.onGroupReplyCreate = exports.onGroupMessageCreate = void 0;
+exports.deleteUserAccount = exports.setUserDisabled = exports.registerPushToken = exports.sendTestPush = exports.onResourceCreated = exports.onMembershipApproved = exports.onMembershipRequestCreated = exports.grantGroupAdminByEmail = exports.onGroupReplyCreate = exports.onGroupMessageCreate = void 0;
 // functions/src/index.ts
 const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions/v1"));
@@ -107,3 +107,6 @@ Object.defineProperty(exports, "onResourceCreated", { enumerable: true, get: fun
 var notifications_1 = require("./notifications");
 Object.defineProperty(exports, "sendTestPush", { enumerable: true, get: function () { return notifications_1.sendTestPush; } });
 Object.defineProperty(exports, "registerPushToken", { enumerable: true, get: function () { return notifications_1.registerPushToken; } });
+var adminUsers_1 = require("./adminUsers");
+Object.defineProperty(exports, "setUserDisabled", { enumerable: true, get: function () { return adminUsers_1.setUserDisabled; } });
+Object.defineProperty(exports, "deleteUserAccount", { enumerable: true, get: function () { return adminUsers_1.deleteUserAccount; } });

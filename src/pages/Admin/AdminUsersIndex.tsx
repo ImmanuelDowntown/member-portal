@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -7,15 +6,18 @@ import {
   getDocs,
   doc,
   getDoc,
+  type DocumentData,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
+import { setUserDisabled, deleteUserAccount } from "@/lib/adminUsers";
 
 type UserRow = {
   uid: string;
   displayName?: string;
   email?: string;
+  status?: string; // active | inactive | deleted (if present on user doc)
   groups: Array<{ id: string; name: string }>;
 };
 
@@ -24,8 +26,10 @@ export default function AdminUsersIndex() {
   const auth = getAuth(app);
 
   const [loading, setLoading] = useState(true);
+  const [isSuper, setIsSuper] = useState(false);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [q, setQ] = useState("");
+  const [busy, setBusy] = useState<string>("");
 
   // optional preselect via ?uid=...
   const { search } = useLocation();
@@ -35,23 +39,37 @@ export default function AdminUsersIndex() {
     if (pre) setQ(pre);
   }, [search]);
 
+  // Determine super-admin and load users
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
         setLoading(true);
         // Require sign-in
-        if (!auth.currentUser) { setUsers([]); return; }
+        const current = auth.currentUser;
+        if (!current) {
+          if (!cancelled) {
+            setUsers([]);
+            setIsSuper(false);
+          }
+          return;
+        }
+
+        // super-admin check
+        const superSnap = await getDoc(doc(db, "admins", current.uid));
+        const superAdmin = superSnap.exists();
+        if (!cancelled) setIsSuper(superAdmin);
 
         // Read all /users docs (super admins can read them per rules)
         const usnap = await getDocs(collection(db, "users"));
         const base: UserRow[] = usnap.docs.map((d) => {
-          const data = d.data() as any;
+          const data = d.data() as DocumentData;
           return {
             uid: d.id,
-            displayName: data?.displayName || data?.name || "",
-            email: data?.email || "",
-            groups: []
+            displayName: (data?.displayName as string) || (data?.name as string) || "",
+            email: (data?.email as string) || "",
+            status: (data?.status as string) || "active",
+            groups: [],
           };
         });
 
@@ -64,8 +82,8 @@ export default function AdminUsersIndex() {
               const gid = m.id;
               try {
                 const gdoc = await getDoc(doc(db, "groups", gid));
-                const gdata = gdoc.data() as any || {};
-                groups.push({ id: gid, name: gdata?.name || gid });
+                const gdata = (gdoc.data() as DocumentData) || {};
+                groups.push({ id: gid, name: (gdata?.name as string) || gid });
               } catch {
                 groups.push({ id: gid, name: gid });
               }
@@ -85,7 +103,9 @@ export default function AdminUsersIndex() {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [db, auth.currentUser]);
 
   const filtered = users.filter((u) => {
@@ -98,6 +118,53 @@ export default function AdminUsersIndex() {
       u.groups.some((g) => g.name.toLowerCase().includes(needle) || g.id.toLowerCase().includes(needle))
     );
   });
+
+  async function handleInactivate(uid: string) {
+    if (!isSuper) return;
+    const reason = window.prompt("Reason for inactivation? (optional)") || undefined;
+    setBusy(`disable:${uid}`);
+    try {
+      await setUserDisabled(uid, true, reason);
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, status: "inactive" } : u)));
+    } catch (e) {
+      // surface minimal error
+      alert("Failed to inactivate user.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function handleReactivate(uid: string) {
+    if (!isSuper) return;
+    if (!window.confirm("Reactivate this user?")) return;
+    setBusy(`enable:${uid}`);
+    try {
+      await setUserDisabled(uid, false);
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, status: "active" } : u)));
+    } catch (e) {
+      alert("Failed to reactivate user.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function handleDelete(uid: string) {
+    if (!isSuper) return;
+    const confirm1 = window.confirm("Delete this user? This will remove their authentication account and related data.");
+    if (!confirm1) return;
+    const confirm2 = window.prompt('Type "DELETE" to confirm.') === "DELETE";
+    if (!confirm2) return;
+
+    setBusy(`delete:${uid}`);
+    try {
+      await deleteUserAccount(uid, false); // soft-delete Firestore user doc; auth user removed
+      setUsers((prev) => prev.filter((u) => u.uid !== uid));
+    } catch (e) {
+      alert("Failed to delete user.");
+    } finally {
+      setBusy("");
+    }
+  }
 
   if (loading) {
     return (
@@ -116,6 +183,7 @@ export default function AdminUsersIndex() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search users…"
           className="rounded-lg border border-slate-300 bg-white/80 px-3 py-2 text-sm outline-none w-56"
+          aria-label="Search users"
         />
       </div>
 
@@ -135,6 +203,7 @@ export default function AdminUsersIndex() {
                 <div className="col-span-4 min-w-0">
                   <div className="text-sm text-slate-900 truncate">{u.displayName || u.uid}</div>
                   {u.email && <div className="text-xs text-slate-600 truncate">{u.email}</div>}
+                  <div className="text-[11px] text-slate-500 mt-0.5">Status: {u.status || "active"}</div>
                 </div>
                 <div className="col-span-3 min-w-0">
                   <div className="flex flex-wrap gap-1">
@@ -155,12 +224,48 @@ export default function AdminUsersIndex() {
                   <span className="text-xs break-all">{u.uid}</span>
                 </div>
                 <div className="col-span-2 text-right">
-                  <Link
-                    to={`/admin/users?uid=${encodeURIComponent(u.uid)}`}
-                    className="text-xs rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-100"
-                  >
-                    View
-                  </Link>
+                  <div className="inline-flex flex-col gap-1 items-end">
+                    <Link
+                      to={`/admin/users?uid=${encodeURIComponent(u.uid)}`}
+                      className="text-xs rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-100"
+                    >
+                      View
+                    </Link>
+
+                    {isSuper && (
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {u.status === "inactive" ? (
+                          <button
+                            onClick={() => handleReactivate(u.uid)}
+                            disabled={!!busy}
+                            className="text-xs rounded-lg px-2 py-1 text-white"
+                            style={{ backgroundColor: "#919FAA", opacity: busy ? 0.6 : 1 }}
+                          >
+                            {busy === `enable:${u.uid}` ? "Working…" : "Reactivate"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleInactivate(u.uid)}
+                            disabled={!!busy}
+                            className="text-xs rounded-lg px-2 py-1 text-white"
+                            style={{ backgroundColor: "#919FAA", opacity: busy ? 0.6 : 1 }}
+                          >
+                            {busy === `disable:${u.uid}` ? "Working…" : "Inactivate"}
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleDelete(u.uid)}
+                          disabled={!!busy}
+                          className="text-xs rounded-lg px-2 py-1 bg-rose-100 text-rose-800 hover:bg-rose-200"
+                          style={{ opacity: busy ? 0.6 : 1 }}
+                          title="Soft delete (Auth account removed; user doc marked deleted)"
+                        >
+                          {busy === `delete:${u.uid}` ? "Deleting…" : "Delete"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))

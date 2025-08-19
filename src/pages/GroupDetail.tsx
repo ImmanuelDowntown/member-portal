@@ -42,6 +42,7 @@ type Member = {
   displayName?: string;
   email?: string;
   role?: string;
+  muted?: boolean; // <-- added: per-group mute flag on membership
 };
 
 type Message = {
@@ -105,6 +106,14 @@ export default function GroupDetail() {
   const [dmSending, setDmSending] = React.useState<boolean>(false);
   const [dmError, setDmError] = React.useState<string>("");
   const [dmSuccess, setDmSuccess] = React.useState<boolean>(false);
+
+  // NEW: current user's membership & mute toggle state
+  const me = auth.currentUser?.uid || null;
+  const myMembership = React.useMemo(() => members.find((m) => m.uid === me) || null, [members, me]);
+  const [muted, setMuted] = React.useState<boolean>(false);
+  React.useEffect(() => {
+    setMuted(!!myMembership?.muted);
+  }, [myMembership?.muted]);
 
   const hasDmSelection = React.useMemo(() => Object.values(dmSelections).some(Boolean), [dmSelections]);
 
@@ -353,7 +362,7 @@ export default function GroupDetail() {
     const unsub = onSnapshot(
       query(collection(db, `groups/${slug}/messages/${m.id}/replies`), orderBy("createdAt", "asc")),
       (snap) => {
-        
+
         const list: Reply[] = snap.docs.map((d) => {
           const data = d.data() as DocumentData;
           return {
@@ -487,8 +496,36 @@ export default function GroupDetail() {
   return (
     <div className="container py-8 md:py-12">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-semibold text-accent">{group.name || slug}</h1>
-        {group.description && <p className="text-sm text-text2 mt-2">{group.description}</p>}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold text-accent">{group.name || slug}</h1>
+            {group.description && <p className="text-sm text-text2 mt-2">{group.description}</p>}
+          </div>
+          {/* Mute toggle for current user */}
+          {me && (
+            <div className="mt-1">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={muted}
+                  onChange={async (e) => {
+                    const v = e.target.checked;
+                    setMuted(v);
+                    try {
+                      await setDoc(doc(db, `groups/${slug}/members/${me}`), { muted: v }, { merge: true });
+                    } catch {
+                      // revert on failure
+                      setMuted(!v);
+                      // eslint-disable-next-line no-alert
+                      alert("Could not update notification setting.");
+                    }
+                  }}
+                />
+                <span>Mute notifications for this group</span>
+              </label>
+            </div>
+          )}
+        </div>
 
         {/* Resources */}
         <section className="mt-6 rounded-xl border border-border bg-card p-5">
@@ -797,6 +834,9 @@ export default function GroupDetail() {
                   <p className="text-sm">{m.displayName || m.uid}</p>
                   {m.role && <p className="text-xs text-text2">{m.role}</p>}
                   {m.email && <p className="text-xs text-text2">{m.email}</p>}
+                  {"muted" in m && (
+                    <p className="text-[11px] text-text2 mt-1">{m.muted ? "Muted" : "Notifications on"}</p>
+                  )}
                 </li>
               ))}
             </ul>

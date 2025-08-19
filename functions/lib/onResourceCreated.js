@@ -1,8 +1,7 @@
 "use strict";
 // functions/src/onResourceCreated.ts
 // Fires when a new resource is added under a group and pushes a notification to the group.
-// Minimal wiring that relies on the shared sendToGroup() helper.
-// If you later need to exclude the author or respect per‑group prefs, do it inside notifications.ts.
+// Relies on the shared sendToGroup() helper. Exclude-logic can be centralized later in notifications.ts.
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -53,12 +52,11 @@ exports.onResourceCreated = functions.firestore.onDocumentCreated("groups/{group
     try {
         // Try to pull a friendly group name and slug for the click‑through URL
         const groupDoc = await db.doc(`groups/${groupId}`).get();
-        const group = groupDoc.exists ? groupDoc.data() : {};
+        const group = groupDoc.exists ? groupDoc.data() : undefined;
         const groupName = group?.name ||
             group?.title ||
             "your group";
-        const slug = group?.slug ||
-            String(groupId);
+        const slug = groupId; // slug is the document ID per your data model
         const url = `/groups/${slug}`; // matches your web route: /groups/:slug
         // Build a string‑only data payload for FCM
         const payload = {

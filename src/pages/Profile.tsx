@@ -3,8 +3,6 @@ import { getAuth } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ensurePushTokenForUser, listenForegroundMessages } from "@/lib/messaging";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { app } from "@/lib/firebase";
 
 type PushPreview = { title?: string; body?: string } | null;
 
@@ -63,8 +61,6 @@ export default function Profile() {
     };
   }, [user]);
 
-  const region = "us-central1"; // ensure we call the same region we deploy to
-
   const handleEnableNotifications = async () => {
     try {
       const u = auth.currentUser;
@@ -78,22 +74,6 @@ export default function Profile() {
     } catch (e) {
       console.error("Notification setup failed", e);
       alert("Could not enable notifications.");
-    }
-  };
-
-  const handleSendTestPush = async () => {
-    try {
-      const fn = httpsCallable(getFunctions(app, region), "sendTestPush");
-      const res: any = await fn({
-        title: "Hello!",
-        body: "This is a test push.",
-        url: "/dashboard",
-      });
-      console.log("sendTestPush:", res.data);
-      alert("Test push sent! Check your notifications.");
-    } catch (e) {
-      console.error("sendTestPush failed", e);
-      alert("sendTestPush failed. See console for details.");
     }
   };
 
@@ -146,14 +126,6 @@ export default function Profile() {
               style={{ backgroundColor: "#919FAA" }}
             >
               Enable notifications on this device
-            </button>
-            <button
-              type="button"
-              onClick={handleSendTestPush}
-              className="rounded-lg px-4 py-2 text-white text-sm"
-              style={{ backgroundColor: "#919FAA" }}
-            >
-              Send test push
             </button>
           </div>
         </section>

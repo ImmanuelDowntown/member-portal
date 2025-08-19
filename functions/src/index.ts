@@ -69,3 +69,6 @@ export const onMembershipApproved = functions.firestore
 // Expose v2 callables and triggers (single export each; avoid duplicates)
 export { onResourceCreated } from "./onResourceCreated";
 export { sendTestPush, registerPushToken } from "./notifications";
+
+export { setUserDisabled, deleteUserAccount } from "./adminUsers";
+
