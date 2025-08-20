@@ -1,93 +1,187 @@
-/* Dashboard.tsx — add "needs attention" indicator for Admin Console */
-const GCAL_EMBED_URL = import.meta.env.VITE_GCAL_EMBED_URL as string | undefined;
-const TIMEZONE = (import.meta.env.VITE_TZ as string | undefined) || "America/New_York";
+/* src/pages/Dashboard.tsx
+   Fix 3: Admin Console button turns yellow when EITHER
+   (a) there are PENDING group join requests this admin is responsible for, OR
+   (b) there are NEW/UNREVIEWED users (super-admins only).
+   Returns to light grey when cleared. Uses real-time listeners.
+*/
 
-import React, { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import Notifications from "@/components/dashboard/Notifications";
 import { getAuth } from "firebase/auth";
 import {
   getFirestore,
   doc,
   getDoc,
-  getDocs,
   collection,
   collectionGroup,
   query,
   where,
-  limit,
-  documentId,
+  onSnapshot,
+  Unsubscribe,
 } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 
-export default function Dashboard(){
+const GCAL_EMBED_URL = import.meta.env.VITE_GCAL_EMBED_URL as string | undefined;
+const TIMEZONE = (import.meta.env.VITE_TZ as string | undefined) || "America/New_York";
+
+export default function Dashboard() {
   const { isAdmin } = useAuth();
 
   const auth = useMemo(() => getAuth(app), []);
   const db = useMemo(() => getFirestore(app), []);
   const [needsAttention, setNeedsAttention] = useState(false);
 
+  // Combine sources
+  const pendingRequestsAnyRef = useRef<boolean>(false);   // any pending membership requests for this admin
+  const newUsersAnyRef = useRef<boolean>(false);          // any new/unreviewed users (super admin only)
+
+  // For group-admins: track per-group pending counts
+  const groupPendingCountsRef = useRef<Map<string, number>>(new Map());
+  const groupUnsubsRef = useRef<Map<string, Unsubscribe>>(new Map());
+
   useEffect(() => {
     let cancelled = false;
-    async function computeAttention() {
+    const unsubs: Unsubscribe[] = [];
+
+    const updateFlag = () => {
+      if (!cancelled) setNeedsAttention(pendingRequestsAnyRef.current || newUsersAnyRef.current);
+    };
+
+    const clearAllGroupUnsubs = () => {
+      groupUnsubsRef.current.forEach((u) => { try { u(); } catch {} });
+      groupUnsubsRef.current.clear();
+      groupPendingCountsRef.current.clear();
+      pendingRequestsAnyRef.current = false;
+      updateFlag();
+    };
+
+    async function wireAttention() {
+      const u = auth.currentUser;
+      if (!u) return;
+      const uid = u.uid;
+
+      // Determine super-admin via presence in /admins/{uid}
+      let isSuper = false;
       try {
-        const u = auth.currentUser;
-        if (!u) return;
-        const uid = u.uid;
-        let attention = false;
-
-        // Is super admin?
         const superSnap = await getDoc(doc(db, "admins", uid));
-        const isSuper = superSnap.exists();
+        isSuper = superSnap.exists();
+      } catch { isSuper = false; }
 
-        if (isSuper) {
-          // Any pending membership requests anywhere?
-          try {
-            const rs = await getDocs(query(collectionGroup(db, "membershipRequests"), limit(1)));
-            if (rs.size > 0) attention = true;
-          } catch {
-            // ignore failures; keep attention false
-          }
-          // Any unapproved users?
-          try {
-            const us = await getDocs(query(collection(db, "users"), where("isCommunityApproved", "==", false), limit(1)));
-            if (us.size > 0) attention = true;
-          } catch {
-            // ignore if rules block non-super (but super should have access)
-          }
-        } else {
-          // Group admin: find groups they administer
-          try {
-            const cg = await getDocs(query(collectionGroup(db, "groupAdmins"), where(documentId(), "==", uid)));
-            const groupIds = cg.docs
-              .map((d) => d.ref.parent.parent?.id || "")
-              .filter(Boolean);
-            for (const gid of groupIds) {
-              try {
-                const snap = await getDocs(query(collection(db, `groups/${gid}/membershipRequests`), limit(1)));
-                if (snap.size > 0) {
-                  attention = true;
-                  break;
-                }
-              } catch {
-                // continue
-              }
-            }
-          } catch {
-            // ignore
-          }
+      // 1) Membership requests listeners
+      if (isSuper) {
+        // Super-admin: watch ALL pending membership requests across groups
+        try {
+          const allPendingQ = query(
+            collectionGroup(db, "membershipRequests"),
+            where("status", "==", "pending")
+          );
+          unsubs.push(onSnapshot(
+            allPendingQ,
+            (qs) => { pendingRequestsAnyRef.current = qs.size > 0; updateFlag(); },
+            () => { pendingRequestsAnyRef.current = false; updateFlag(); }
+          ));
+        } catch {
+          // If the collection group is not available, we simply don't set the flag here.
+          pendingRequestsAnyRef.current = false;
+          updateFlag();
         }
+      } else {
+        // Group admin: watch groups where current user is an admin via groups.adminIds array
+        try {
+          const myGroupsQ = query(collection(db, "groups"), where("adminIds", "array-contains", uid));
+          unsubs.push(onSnapshot(
+            myGroupsQ,
+            (qs) => {
+              const nextIds = new Set<string>();
+              qs.forEach((d) => nextIds.add(d.id));
 
-        if (!cancelled) setNeedsAttention(attention);
-      } catch {
-        if (!cancelled) setNeedsAttention(false);
+              // Unsubscribe removed groups and clear their counts
+              for (const [gid, unsub] of groupUnsubsRef.current.entries()) {
+                if (!nextIds.has(gid)) {
+                  try { unsub(); } catch {}
+                  groupUnsubsRef.current.delete(gid);
+                  groupPendingCountsRef.current.delete(gid);
+                }
+              }
+
+              // Subscribe to new groups
+              nextIds.forEach((gid) => {
+                if (groupUnsubsRef.current.has(gid)) return;
+                const pendingQ = query(
+                  collection(db, `groups/${gid}/membershipRequests`),
+                  where("status", "==", "pending")
+                );
+                const gu = onSnapshot(
+                  pendingQ,
+                  (qs2) => {
+                    groupPendingCountsRef.current.set(gid, qs2.size);
+                    // Recompute aggregate
+                    let any = false;
+                    for (const count of groupPendingCountsRef.current.values()) {
+                      if ((count ?? 0) > 0) { any = true; break; }
+                    }
+                    pendingRequestsAnyRef.current = any;
+                    updateFlag();
+                  },
+                  () => {
+                    groupPendingCountsRef.current.set(gid, 0);
+                    // Recompute aggregate on error
+                    let any = false;
+                    for (const count of groupPendingCountsRef.current.values()) {
+                      if ((count ?? 0) > 0) { any = true; break; }
+                    }
+                    pendingRequestsAnyRef.current = any;
+                    updateFlag();
+                  }
+                );
+                groupUnsubsRef.current.set(gid, gu);
+              });
+
+              // Initial recompute in case there are zero groups
+              let any = false;
+              for (const count of groupPendingCountsRef.current.values()) {
+                if ((count ?? 0) > 0) { any = true; break; }
+              }
+              pendingRequestsAnyRef.current = any;
+              updateFlag();
+            },
+            () => {
+              clearAllGroupUnsubs();
+            }
+          ));
+        } catch {
+          clearAllGroupUnsubs();
+        }
+      }
+
+      // 2) New/unreviewed users (super-admin only)
+      if (isSuper) {
+        const tryUsersWatch = (qRef: ReturnType<typeof query>) => {
+          try {
+            const unsub = onSnapshot(
+              qRef,
+              (qs) => { newUsersAnyRef.current = qs.size > 0; updateFlag(); },
+              () => { /* ignore */ }
+            );
+            unsubs.push(unsub);
+          } catch { /* ignore */ }
+        };
+        // Use the first field your schema actually supports; these are common options:
+        tryUsersWatch(query(collection(db, "users"), where("reviewed", "==", false)));
+        tryUsersWatch(query(collection(db, "users"), where("status", "==", "pending")));
+        tryUsersWatch(query(collection(db, "users"), where("needsReview", "==", true)));
       }
     }
-    void computeAttention();
-    // Re-evaluate on mount; if your app tracks auth state, you could also
-    // re-run when isAdmin changes or when user reauths.
-    return () => { cancelled = true; };
+
+    void wireAttention();
+
+    return () => {
+      cancelled = true;
+      unsubs.forEach((u) => { try { u(); } catch {} });
+      clearAllGroupUnsubs();
+    };
   }, [auth, db]);
 
   const calendarSrc = GCAL_EMBED_URL
@@ -128,7 +222,7 @@ export default function Dashboard(){
         <h2 className="text-xl font-semibold text-accent">General Announcements</h2>
         <ul className="mt-3 space-y-2 text-text">
           <li>• Welcome to the Community Portal. Check your groups for updates. </li>
-          <li>• Notifications are now working. Open your profile and click on "Enable notification" in order be kept up to speed on announcements and new resources and communications in your groups.</li>
+          <li>• Notifications are now working. Open your profile and click on "Enable notification" to be kept up to speed on announcements and new resources and communications in your groups.</li>
           <li>• We are working on getting Direct Messaging working so everyone can communicate easily in one place.</li>
           <li>• We are still in development. If you find bugs, or have features you'd like to see added, send Sam a DM.</li>
         </ul>

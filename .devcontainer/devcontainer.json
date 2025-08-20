@@ -1,0 +1,17 @@
+{
+  "name": "Church App Dev",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "updateContentCommand": "bash -lc 'scripts/codex-setup.sh'",
+  "postCreateCommand": "npm run -s typecheck || true",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "typescript.tsdk": "node_modules/typescript/lib"
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}

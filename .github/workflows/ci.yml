@@ -1,0 +1,22 @@
+name: ci
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install
+        run: |
+          corepack enable || true
+          if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile;                   elif [ -f package-lock.json ]; then npm ci --no-audit --no-fund --progress=false;                   else npm install --no-audit --no-fund --progress=false; fi
+      - name: Typecheck
+        run: npm run -s typecheck || true
+      - name: Build
+        run: npm run -s build

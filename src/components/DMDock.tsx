@@ -452,8 +452,8 @@ export default function DMDock() {
       {/* Dock */}
       {open && (
         <div
-          className="fixed z-[1000] md:right-4 md:bottom-16 md:w-[780px] md:h-[480px] md:rounded-xl
-                     inset-x-0 bottom-0 w-screen h-[85vh] rounded-t-2xl
+          className="fixed z-[1000] bottom-0 inset-x-0 w-full h-[85vh] rounded-t-2xl
+                     md:bottom-16 md:left-1/2 md:inset-x-auto md:w-full md:max-w-[780px] md:max-h-[480px] md:rounded-xl md:-translate-x-1/2 md:transform
                      border border-slate-800 bg-slate-900 text-white shadow-xl overflow-hidden
                      flex md:flex-row flex-col"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
