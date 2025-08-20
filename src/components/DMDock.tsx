@@ -438,11 +438,11 @@ export default function DMDock() {
   // ---------- UI ----------
   return (
     <>
-      {/* Floating toggle button */}
+      {/* Floating toggle pill: visible on desktop always; on mobile only when dock is closed */}
       <button
         type="button"
         onClick={() => { setOpen((v) => !v); if (!open) setView("list"); }}
-        className="fixed bottom-4 right-4 z-[1000] shadow-lg rounded-full px-4 py-2 text-white text-sm md:text-[13px]"
+        className={`fixed bottom-4 right-4 z-[1100] shadow-lg rounded-full px-4 py-2 text-white text-sm md:text-[13px] ${open ? "hidden md:inline-flex" : "inline-flex"}`}
         style={{ backgroundColor: "#919FAA" }}
         aria-label={open ? "Close direct messages" : "Open direct messages"}
       >
@@ -458,14 +458,23 @@ export default function DMDock() {
                      flex md:flex-row flex-col"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          {/* Mobile header (hidden on desktop) */}
+          {/* Mobile header with Close and New/Back */}
           <div className="md:hidden flex items-center justify-between px-3 py-2 border-b border-slate-800">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="text-xs rounded-md border border-slate-700 px-2 py-1"
+              aria-label="Close direct messages"
+            >
+              Close
+            </button>
             <div className="text-sm font-semibold">Direct Messages</div>
             {view !== "compose" ? (
               <button
                 type="button"
                 onClick={() => setView("compose")}
                 className="text-xs rounded-md border border-slate-700 px-2 py-1"
+                aria-label="New message"
               >
                 New
               </button>
@@ -474,6 +483,7 @@ export default function DMDock() {
                 type="button"
                 onClick={() => setView("list")}
                 className="text-xs rounded-md border border-slate-700 px-2 py-1"
+                aria-label="Back to conversations"
               >
                 Back
               </button>
