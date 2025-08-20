@@ -1,16 +1,102 @@
-/* Dashboard.tsx — no 'Go to...' menu */
+/* Dashboard.tsx — add "needs attention" indicator for Admin Console */
 const GCAL_EMBED_URL = import.meta.env.VITE_GCAL_EMBED_URL as string | undefined;
 const TIMEZONE = (import.meta.env.VITE_TZ as string | undefined) || "America/New_York";
 
+import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import Notifications from "@/components/dashboard/Notifications";
+import { getAuth } from "firebase/auth";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  getDocs,
+  collection,
+  collectionGroup,
+  query,
+  where,
+  limit,
+  documentId,
+} from "firebase/firestore";
+import { app } from "@/lib/firebase";
 
 export default function Dashboard(){
   const { isAdmin } = useAuth();
+
+  const auth = useMemo(() => getAuth(app), []);
+  const db = useMemo(() => getFirestore(app), []);
+  const [needsAttention, setNeedsAttention] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function computeAttention() {
+      try {
+        const u = auth.currentUser;
+        if (!u) return;
+        const uid = u.uid;
+        let attention = false;
+
+        // Is super admin?
+        const superSnap = await getDoc(doc(db, "admins", uid));
+        const isSuper = superSnap.exists();
+
+        if (isSuper) {
+          // Any pending membership requests anywhere?
+          try {
+            const rs = await getDocs(query(collectionGroup(db, "membershipRequests"), limit(1)));
+            if (rs.size > 0) attention = true;
+          } catch {
+            // ignore failures; keep attention false
+          }
+          // Any unapproved users?
+          try {
+            const us = await getDocs(query(collection(db, "users"), where("isCommunityApproved", "==", false), limit(1)));
+            if (us.size > 0) attention = true;
+          } catch {
+            // ignore if rules block non-super (but super should have access)
+          }
+        } else {
+          // Group admin: find groups they administer
+          try {
+            const cg = await getDocs(query(collectionGroup(db, "groupAdmins"), where(documentId(), "==", uid)));
+            const groupIds = cg.docs
+              .map((d) => d.ref.parent.parent?.id || "")
+              .filter(Boolean);
+            for (const gid of groupIds) {
+              try {
+                const snap = await getDocs(query(collection(db, `groups/${gid}/membershipRequests`), limit(1)));
+                if (snap.size > 0) {
+                  attention = true;
+                  break;
+                }
+              } catch {
+                // continue
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        if (!cancelled) setNeedsAttention(attention);
+      } catch {
+        if (!cancelled) setNeedsAttention(false);
+      }
+    }
+    void computeAttention();
+    // Re-evaluate on mount; if your app tracks auth state, you could also
+    // re-run when isAdmin changes or when user reauths.
+    return () => { cancelled = true; };
+  }, [auth, db]);
+
   const calendarSrc = GCAL_EMBED_URL
     ? `${GCAL_EMBED_URL}${GCAL_EMBED_URL.includes("?") ? "&" : "?"}ctz=${encodeURIComponent(TIMEZONE)}`
     : null;
+
+  const adminBtnClass = needsAttention
+    ? "text-sm px-3 py-1.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200"
+    : "text-sm px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-slate-200";
 
   return (
     <div className="container py-8 md:py-10">
@@ -23,11 +109,14 @@ export default function Dashboard(){
         <section className="mb-6 border border-border p-5 rounded-xl flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-accent">Admin Tools</h2>
-            <p className="text-sm text-text2">You have admin privileges.</p>
+            <p className="text-sm text-text2">
+              {needsAttention ? "Attention needed: pending requests or new users." : "You have admin privileges."}
+            </p>
           </div>
           <Link
             to="/admin/groups"
-            className="text-sm px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-slate-200"
+            className={adminBtnClass}
+            title={needsAttention ? "Pending requests or new users need review" : "Open Admin Console"}
           >
             Admin Console
           </Link>

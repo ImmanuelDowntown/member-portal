@@ -1,11 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { getAuth } from "firebase/auth";
+import React, { useEffect, useMemo, useState } from "react";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import {
   getFirestore,
-  collection,
-  query,
-  where,
-  getDocs,
   doc,
   getDoc,
   setDoc,
@@ -17,71 +13,96 @@ import { app } from "../lib/firebase";
 type Status = "none" | "member" | "pending";
 
 export default function GroupJoinButton({ groupId }: { groupId: string }) {
+  const auth = useMemo(() => getAuth(app), []);
+  const db = useMemo(() => getFirestore(app), []);
+
+  const [uid, setUid] = useState<string>("");
   const [status, setStatus] = useState<Status>("none");
   const [busy, setBusy] = useState(false);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  const user = auth.currentUser;
+  const [error, setError] = useState<string>("");
 
+  // Subscribe to auth and track UID (fix: was using auth.currentUser once at mount)
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUid(u?.uid ?? ""));
+    return unsub;
+  }, [auth]);
+
+  // Resolve current status from Firestore whenever uid/group changes
   useEffect(() => {
     let active = true;
-    async function load() {
-      if (!user) return;
-      const mRef = collection(db, `users/${user.uid}/memberships`);
-      const q = query(mRef, where("groupId", "==", groupId));
-      const snap = await getDocs(q);
-      if (!active) return;
-
-      if (!snap.empty) {
-        setStatus("member");
+    async function loadStatus() {
+      setError("");
+      if (!uid || !groupId) {
+        setStatus("none");
         return;
       }
-
-      const pendingRef = doc(db, `groups/${groupId}/membershipRequests/${user.uid}`);
-      const pendingSnap = await getDoc(pendingRef);
-      if (!active) return;
-
-      setStatus(pendingSnap.exists() ? "pending" : "none");
+      try {
+        // Member? (we store membership at users/{uid}/memberships/{groupId})
+        const memSnap = await getDoc(doc(db, `users/${uid}/memberships/${groupId}`));
+        if (!active) return;
+        if (memSnap.exists()) {
+          setStatus("member");
+          return;
+        }
+        // Pending?
+        const pendingSnap = await getDoc(doc(db, `groups/${groupId}/membershipRequests/${uid}`));
+        if (!active) return;
+        setStatus(pendingSnap.exists() ? "pending" : "none");
+      } catch (e) {
+        if (!active) return;
+        setError("Could not check membership status.");
+        setStatus("none");
+      }
     }
-    load();
-    return () => { active = false; };
-  }, [db, user, groupId]);
+    void loadStatus();
+    return () => {
+      active = false;
+    };
+  }, [db, uid, groupId]);
 
   async function requestJoin() {
-    if (!user) return;
+    setError("");
+    if (!uid) {
+      // optional: redirect to login
+      return;
+    }
     setBusy(true);
     try {
-      const userReqRef = doc(db, `users/${user.uid}/membershipRequests/${groupId}`);
-      const groupReqRef = doc(db, `groups/${groupId}/membershipRequests/${user.uid}`);
-
       const payload = {
-        uid: user.uid,
+        uid,
         groupId,
         createdAt: serverTimestamp(),
-        displayName: user.displayName || user.email || "Member",
       };
-
-      await Promise.all([setDoc(userReqRef, payload), setDoc(groupReqRef, payload)]);
+      await Promise.all([
+        setDoc(doc(db, `users/${uid}/membershipRequests/${groupId}`), payload, { merge: true }),
+        setDoc(doc(db, `groups/${groupId}/membershipRequests/${uid}`), payload, { merge: true }),
+      ]);
       setStatus("pending");
+    } catch (e) {
+      setError("Could not submit join request. Please try again.");
     } finally {
       setBusy(false);
     }
   }
 
   async function cancelRequest() {
-    if (!user) return;
+    setError("");
+    if (!uid) return;
     setBusy(true);
     try {
-      const userReqRef = doc(db, `users/${user.uid}/membershipRequests/${groupId}`);
-      const groupReqRef = doc(db, `groups/${groupId}/membershipRequests/${user.uid}`);
-      await Promise.all([deleteDoc(userReqRef), deleteDoc(groupReqRef)]);
+      await Promise.all([
+        deleteDoc(doc(db, `users/${uid}/membershipRequests/${groupId}`)),
+        deleteDoc(doc(db, `groups/${groupId}/membershipRequests/${uid}`)),
+      ]);
       setStatus("none");
+    } catch (e) {
+      setError("Could not cancel the request.");
     } finally {
       setBusy(false);
     }
   }
 
-  if (!user) return null;
+  if (!uid) return null;
 
   if (status === "member") {
     return (
@@ -93,24 +114,31 @@ export default function GroupJoinButton({ groupId }: { groupId: string }) {
 
   if (status === "pending") {
     return (
-      <button
-        onClick={cancelRequest}
-        className="text-xs px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-60"
-        disabled={busy}
-        title="Cancel request"
-      >
-        Pending — Cancel
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={cancelRequest}
+          className="text-xs px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-60"
+          disabled={busy}
+          title="Cancel request"
+        >
+          {busy ? "Working…" : "Pending — Cancel"}
+        </button>
+        {error && <span className="text-[11px] text-rose-700">{error}</span>}
+      </div>
     );
   }
 
   return (
-    <button
-      onClick={requestJoin}
-      className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-slate-200 disabled:opacity-60"
-      disabled={busy}
-    >
-      Request to Join
-    </button>
+    <div className="flex items-center gap-2">
+      <button
+        onClick={requestJoin}
+        className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 hover:bg-slate-200 disabled:opacity-60"
+        disabled={busy}
+        title="Request to Join"
+      >
+        {busy ? "Working…" : "Request to Join"}
+      </button>
+      {error && <span className="text-[11px] text-rose-700">{error}</span>}
+    </div>
   );
 }

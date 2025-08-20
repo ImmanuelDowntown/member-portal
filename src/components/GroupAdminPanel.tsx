@@ -98,6 +98,11 @@ export default function GroupAdminPanel({ groupId }: Props) {
           View Audit Log
         </Link>
 
+        {isAllowed && (
+          <Link to={`/admin/groups/${groupId}/edit`} className="text-sm px-3 py-1.5 rounded-lg bg-white text-slate-900 border border-slate-200 hover:bg-slate-50">
+            Edit Group
+          </Link>
+        )}
         {isSuper && (
           <>
             <Link to={`/admin/groups/${groupId}/edit`} className="text-sm px-3 py-1.5 rounded-lg bg-white text-slate-900 border border-slate-200 hover:bg-slate-50">
