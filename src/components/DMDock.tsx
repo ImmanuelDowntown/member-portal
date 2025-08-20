@@ -435,13 +435,14 @@ export default function DMDock() {
     return name.includes(needle) || email.includes(needle) || m.uid.toLowerCase().includes(needle);
   });
 
+  // ---------- UI ----------
   return (
     <>
       {/* Floating toggle button */}
       <button
         type="button"
         onClick={() => { setOpen((v) => !v); if (!open) setView("list"); }}
-        className="fixed bottom-4 right-4 z-[1000] shadow-lg rounded-full px-4 py-2 text-white text-sm"
+        className="fixed bottom-4 right-4 z-[1000] shadow-lg rounded-full px-4 py-2 text-white text-sm md:text-[13px]"
         style={{ backgroundColor: "#919FAA" }}
         aria-label={open ? "Close direct messages" : "Open direct messages"}
       >
@@ -450,42 +451,72 @@ export default function DMDock() {
 
       {/* Dock */}
       {open && (
-        <div className="fixed bottom-16 right-4 z-[1000] w-[780px] max-w-[95vw] h-[480px] rounded-xl border border-slate-800 bg-slate-900 text-white shadow-xl overflow-hidden flex">
-          {/* Left: Threads list */}
-          <div className="w-64 border-r border-slate-800 h-full overflow-auto">
-            <div className="px-3 py-2 text-sm font-semibold flex items-center justify-between">
-              <span>Conversations</span>
+        <div
+          className="fixed z-[1000] md:right-4 md:bottom-16 md:w-[780px] md:h-[480px] md:rounded-xl
+                     inset-x-0 bottom-0 w-screen h-[85vh] rounded-t-2xl
+                     border border-slate-800 bg-slate-900 text-white shadow-xl overflow-hidden
+                     flex md:flex-row flex-col"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          {/* Mobile header (hidden on desktop) */}
+          <div className="md:hidden flex items-center justify-between px-3 py-2 border-b border-slate-800">
+            <div className="text-sm font-semibold">Direct Messages</div>
+            {view !== "compose" ? (
               <button
                 type="button"
                 onClick={() => setView("compose")}
-                className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
-                title="New message"
+                className="text-xs rounded-md border border-slate-700 px-2 py-1"
               >
                 New
               </button>
-            </div>
-            {threads.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-slate-300">No conversations yet.</div>
             ) : (
-              <ul>
-                {threads.map((t) => (
-                  <li key={`${t.groupId}__${t.id}`}>
-                    <button
-                      type="button"
-                      onClick={() => { setActive(t); setView("chat"); }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 ${active && active.id === t.id && active.groupId === t.groupId ? "bg-slate-800" : ""}`}
-                    >
-                      <div className="font-medium truncate">{t.otherName || t.otherUid}</div>
-                      <div className="text-xs text-slate-300 truncate">{t.lastText || "…"}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">Group: {t.groupId}</div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <button
+                type="button"
+                onClick={() => setView("list")}
+                className="text-xs rounded-md border border-slate-700 px-2 py-1"
+              >
+                Back
+              </button>
             )}
           </div>
 
-          {/* Right: Panel (chat OR compose) */}
+          {/* Left: Threads list (hidden on mobile while composing/chatting) */}
+          {view === "list" && (
+            <div className="md:w-64 md:border-r md:border-slate-800 h-[40vh] md:h-full overflow-auto">
+              <div className="hidden md:flex px-3 py-2 text-sm font-semibold items-center justify-between">
+                <span>Conversations</span>
+                <button
+                  type="button"
+                  onClick={() => setView("compose")}
+                  className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
+                  title="New message"
+                >
+                  New
+                </button>
+              </div>
+              {threads.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-slate-300">No conversations yet.</div>
+              ) : (
+                <ul>
+                  {threads.map((t) => (
+                    <li key={`${t.groupId}__${t.id}`}>
+                      <button
+                        type="button"
+                        onClick={() => { setActive(t); setView("chat"); }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 ${active && active.id === t.id && active.groupId === t.groupId ? "bg-slate-800" : ""}`}
+                      >
+                        <div className="font-medium truncate">{t.otherName || t.otherUid}</div>
+                        <div className="text-xs text-slate-300 truncate">{t.lastText || "…"}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">Group: {t.groupId}</div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Right: Panel */}
           <div className="flex-1 h-full flex flex-col">
             {view === "chat" && active && (
               <>
@@ -493,19 +524,19 @@ export default function DMDock() {
                   <button
                     type="button"
                     onClick={() => setView("list")}
-                    className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
+                    className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800 md:hidden"
                   >
                     ← Back
                   </button>
-                  <div className="text-sm font-semibold">{active.otherName || active.otherUid}</div>
-                  <div className="text-xs text-slate-400 ml-auto">Group: {active.groupId}</div>
+                  <div className="text-sm font-semibold truncate">{active.otherName || active.otherUid}</div>
+                  <div className="text-xs text-slate-400 ml-auto hidden md:block">Group: {active.groupId}</div>
                 </div>
 
                 <div className="flex-1 overflow-auto p-3 space-y-2">
                   {msgs.map((m) => {
                     const mine = m.from === me;
                     return (
-                      <div key={m.id} className={`max-w-[80%] rounded-lg px-3 py-2 text-sm relative ${mine ? "ml-auto border border-slate-700" : "bg-slate-800"}`}>
+                      <div key={m.id} className={`max-w-[85%] md:max-w-[80%] rounded-lg px-3 py-2 text-sm relative ${mine ? "ml-auto border border-slate-700" : "bg-slate-800"}`}>
                         {m.text}
                         {(mine || isSuper) && (
                           <button
@@ -524,11 +555,11 @@ export default function DMDock() {
                 </div>
 
                 <div className="border-t border-slate-800 p-2 flex gap-2">
-                  <input
+                  <textarea
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Write a message…"
-                    className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none text-white placeholder:text-slate-400"
+                    className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none text-white placeholder:text-slate-400 h-10 md:h-auto md:min-h-[40px] max-h-28"
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
                   />
                   <button
@@ -557,8 +588,8 @@ export default function DMDock() {
                   <div className="text-sm font-semibold">New message</div>
                 </div>
 
-                <div className="flex-1 p-3 grid grid-cols-5 gap-3">
-                  <div className="col-span-2">
+                <div className="flex-1 p-3 grid grid-cols-1 md:grid-cols-5 gap-3 overflow-auto">
+                  <div className="md:col-span-2">
                     <label className="text-xs text-slate-300">Recipients</label>
                     <input
                       value={filter}
@@ -566,7 +597,7 @@ export default function DMDock() {
                       placeholder="Search by screen name…"
                       className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm outline-none"
                     />
-                    <div className="mt-2 max-h-48 overflow-auto rounded-lg border border-slate-700">
+                    <div className="mt-2 h-56 md:h-48 overflow-auto rounded-lg border border-slate-700">
                       {filteredMembers.length === 0 ? (
                         <div className="px-2 py-2 text-xs text-slate-400">No matching users.</div>
                       ) : (
@@ -576,11 +607,11 @@ export default function DMDock() {
                               <input
                                 id={`sel-${m.uid}`}
                                 type="checkbox"
-                                className="h-4 w-4"
+                                className="h-4 w-4 accent-[#919FAA]"
                                 checked={!!sel[m.uid]}
                                 onChange={(e) => setSel((prev) => ({ ...prev, [m.uid]: e.target.checked }))}
                               />
-                              <label htmlFor={`sel-${m.uid}`} className="text-sm">
+                              <label htmlFor={`sel-${m.uid}`} className="text-sm truncate">
                                 {m.displayName || m.uid}{m.email ? ` • ${m.email}` : ""}
                               </label>
                             </li>
@@ -590,13 +621,13 @@ export default function DMDock() {
                     </div>
                   </div>
 
-                  <div className="col-span-3 flex flex-col">
+                  <div className="md:col-span-3 flex flex-col">
                     <label className="text-xs text-slate-300">Message</label>
                     <textarea
                       value={composeText}
                       onChange={(e) => setComposeText(e.target.value)}
                       placeholder="Write your message…"
-                      className="mt-1 flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none"
+                      className="mt-1 flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none h-40 md:h-auto"
                     />
                   </div>
                 </div>
@@ -623,7 +654,7 @@ export default function DMDock() {
             )}
 
             {view === "list" && !active && (
-              <div className="flex-1 grid place-items-center text-sm text-slate-300">
+              <div className="hidden md:grid place-items-center flex-1 text-sm text-slate-300">
                 Select a conversation or click <b className="mx-1">New</b> to start one.
               </div>
             )}
