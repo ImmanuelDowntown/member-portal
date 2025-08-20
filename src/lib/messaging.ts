@@ -3,6 +3,7 @@
 // Uses single firebase init from "@/lib/firebase".
 // Saves tokens under users/{uid}/pushTokens/{token}.
 
+/* eslint-disable no-console */
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import type { MessagePayload } from "firebase/messaging";
 import { getToken, onMessage } from "firebase/messaging";
@@ -14,7 +15,7 @@ function present(v: unknown): "present" | "missing" {
   return v ? "present" : "missing";
 }
 
-// Expose a quick diagnostic you can call from the console.
+// Expose a quick diagnostic you can call from the console (dev shim attached below).
 export async function checkMessagingDiagnostics() {
   const supports = await (async () => {
     try {
@@ -24,10 +25,13 @@ export async function checkMessagingDiagnostics() {
       return false;
     }
   })();
-  const swReg = await navigator.serviceWorker.getRegistration('/sw.js');
-  const perm = typeof Notification !== "undefined" ? Notification.permission : "unavailable";
+  const swReg = await navigator.serviceWorker.getRegistration("/sw.js");
+  const perm =
+    typeof Notification !== "undefined" ? Notification.permission : "unavailable";
   // Do not print the actual key, only presence
-  const vapidKey = (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY as string | undefined;
+  const vapidKey = (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY as
+    | string
+    | undefined;
   const result = {
     permission: perm,
     swRegistered: !!swReg,
@@ -59,7 +63,7 @@ export async function ensurePushTokenForUser(uid: string): Promise<string | null
   console.groupCollapsed("[push] enroll start");
   try {
     // 0) Show quick status
-    const diag = await checkMessagingDiagnostics();
+    await checkMessagingDiagnostics();
 
     // 1) Check support
     if (!(await isMessagingSupported())) {
@@ -79,7 +83,7 @@ export async function ensurePushTokenForUser(uid: string): Promise<string | null
     }
 
     // 3) Ensure /sw.js is registered
-    let reg = await navigator.serviceWorker.getRegistration('/sw.js');
+    let reg = await navigator.serviceWorker.getRegistration("/sw.js");
     if (!reg) {
       console.log("[push] registering /sw.js");
       try {
@@ -101,7 +105,9 @@ export async function ensurePushTokenForUser(uid: string): Promise<string | null
     }
 
     // 5) Get token
-    const vapidKey = (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY as string | undefined;
+    const vapidKey = (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY as
+      | string
+      | undefined;
     if (!vapidKey) {
       console.warn("[push] VITE_FIREBASE_VAPID_KEY missing from env");
       return null;
@@ -117,12 +123,16 @@ export async function ensurePushTokenForUser(uid: string): Promise<string | null
       console.warn("[push] getToken() returned null/empty");
       return null;
     }
-    console.log("[push] obtained token (truncated):", token.slice(0, 10) + "…");
+    console.log("[push] obtained token (truncated):", token.slice(0, 10) + "...");
 
     // 6) Save token (client-side best effort)
     try {
       const ref = doc(db, `users/${uid}/pushTokens/${token}`);
-      await setDoc(ref, { token, createdAt: serverTimestamp(), userAgent: navigator.userAgent || "" }, { merge: true });
+      await setDoc(
+        ref,
+        { token, createdAt: serverTimestamp(), userAgent: navigator.userAgent || "" },
+        { merge: true }
+      );
       console.log("[push] token saved to Firestore (client)");
     } catch (e) {
       console.warn("[push] failed to write token to Firestore (client):", e);
@@ -164,6 +174,18 @@ export async function listenForegroundMessages(
     }
   });
   return unsubscribe;
+}
+
+// --- Dev-only shim: expose a couple helpers on window for quick console testing.
+declare global {
+  interface Window {
+    checkMessagingDiagnostics?: typeof checkMessagingDiagnostics;
+    ensurePushTokenForUser?: typeof ensurePushTokenForUser;
+  }
+}
+if (import.meta.env && (import.meta as any).env.DEV) {
+  (window as any).checkMessagingDiagnostics = checkMessagingDiagnostics;
+  (window as any).ensurePushTokenForUser = ensurePushTokenForUser;
 }
 
 export {}; // module boundary
