@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -46,6 +45,15 @@ service cloud.firestore {
         allow create, update, delete: if isSignedIn() && (userUid == uid() || isGroupAdmin(groupId) || isSuperAdmin());
       }
 
+      // NEW: user's membership requests (source of truth for request status in UI)
+      match /membershipRequests/{groupId} {
+        // Owner can create/cancel and read their own request; super admin may read
+        allow create: if isSignedIn() && userUid == uid();
+        allow delete: if isSignedIn() && userUid == uid();
+        allow get, list: if isSignedIn() && (userUid == uid() || isSuperAdmin());
+        allow update: if false;
+      }
+
       // Optional: thread read markers for message threads
       match /threadReads/{key} {
         allow read, list: if isSignedIn() && userUid == uid();
@@ -67,6 +75,17 @@ service cloud.firestore {
         allow get, list: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
         // Writes by group admins or super admin
         allow create, update, delete: if isSignedIn() && (isGroupAdmin(groupId) || isSuperAdmin());
+      }
+
+      // NEW: mirrored membership requests under the group (for admin review)
+      match /membershipRequests/{requestUid} {
+        // A signed-in user may mirror their own request here
+        allow create: if isSignedIn() && requestUid == uid();
+        // User may withdraw their own request; admins may also delete (approve/deny workflow)
+        allow delete: if isSignedIn() && (requestUid == uid() || isGroupAdmin(groupId) || isSuperAdmin());
+        // Group admins and super admins can read/list pending requests
+        allow get, list: if isGroupAdmin(groupId) || isSuperAdmin();
+        allow update: if false;
       }
 
       // Group resources (docs/files metadata)
