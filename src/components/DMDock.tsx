@@ -23,7 +23,6 @@ import { app } from "@/lib/firebase";
 
 type Thread = {
   id: string;                // pairId
-  groupId: string;           // parent group slug
   users: string[];           // [uidA, uidB]
   lastText?: string;
   lastAt?: unknown;
@@ -104,26 +103,34 @@ export default function DMDock() {
 
   // Resolve other user's display name cache
   const nameCache = React.useRef<Record<string, string>>({});
-  async function resolveName(uid: string) {
+  async function resolveName(uid: string, pairId?: string) {
     if (nameCache.current[uid]) return nameCache.current[uid];
     try {
+      // Try users collection
       let snap = await getDoc(doc(db, "users", uid));
       let nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
       if (!nm) {
+        // Fallback to admins collection
         snap = await getDoc(doc(db, "admins", uid));
         nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
       }
-      const finalName = nm || uid;
-      nameCache.current[uid] = finalName;
-      return finalName;
-      
-
+      if (nm) {
+        nameCache.current[uid] = nm;
+        if (pairId) {
+          // Persist into dmThreads for faster next-time lookups
+          try {
+            await setDoc(doc(db, `dmThreads/${pairId}`), { [`userNames.${uid}`]: nm }, { merge: true });
+          } catch {}
+        }
+        return nm;
+      }
+      return uid; // fallback (do not cache so we can retry later)
     } catch {
       return uid;
     }
   }
 
-  // Backfill helper: derive missing thread metadata from messages I participated in
+  // Backfill helper: derive missing thread metadata from GLOBAL messages I participated in
   async function backfillThreadsFromMessages(currentUid: string) {
     try {
       const qFrom = query(collectionGroup(db, "messages"), where("from", "==", currentUid));
@@ -132,21 +139,22 @@ export default function DMDock() {
       const all = [...fromSnap.docs, ...toSnap.docs];
       const ops: Array<Promise<unknown>> = [];
       for (const d of all) {
+        const parts = d.ref.path.split("/"); // dmMessages/{pairId}/messages/{id} OR groups/... (legacy)
+        if (parts.length < 4) continue;
+        if (parts[0] !== "dmMessages") continue; // only global DMs
+        const pairId = parts[1];
         const data = d.data() as DocumentData;
-        const parts = d.ref.path.split("/"); // groups/{groupId}/directMessages/{pairId}/messages/{id}
-        if (parts.length < 6) continue;
-        const groupId = parts[1];
-        const pairId = parts[3];
         const otherUid = (data.from === currentUid ? data.to : data.from) as string;
         if (!otherUid) continue;
         const users = [currentUid, otherUid].sort();
-        const metaRef = doc(collection(db, `groups/${groupId}/directMessages`), pairId);
-        ops.push(setDoc(metaRef, {
+        const metaRef = doc(db, `dmThreads/${pairId}`);
+        const meta: Record<string, unknown> = {
           users,
           lastText: (data.text as string) || "",
           lastAt: data.createdAt || serverTimestamp(),
           lastSender: (data.from as string) || currentUid,
-        }, { merge: true }));
+        };
+        ops.push(setDoc(metaRef, meta, { merge: true }));
       }
       await Promise.allSettled(ops);
     } catch {
@@ -154,64 +162,11 @@ export default function DMDock() {
     }
   }
 
-  // Fallback: listen per-group if collectionGroup query is blocked by rules
-  const perGroupUnsubs = React.useRef<Unsubscribe[]>([]);
-  function clearPerGroupUnsubs() {
-    perGroupUnsubs.current.forEach((u) => { try { u(); } catch {} });
-    perGroupUnsubs.current = [];
-  }
-  function setupPerGroupThreadListeners(currentUid: string, groups: MyGroup[]) {
-    clearPerGroupUnsubs();
-    const all: Record<string, Thread> = {};
-    groups.forEach((g) => {
-      try {
-        const qref = query(collection(db, `groups/${g.id}/directMessages`), where("users", "array-contains", currentUid));
-        const unsub = onSnapshot(qref, (snap) => {
-          snap.docs.forEach((d) => {
-            const data = d.data() as DocumentData;
-            const users = (data?.users as string[]) || [];
-            const otherUid = users.find((u) => u !== currentUid) || "";
-            const t: Thread = {
-              id: d.id,
-              groupId: g.id,
-              users,
-              lastText: (data?.lastText as string) || "",
-              lastAt: data?.lastAt,
-              otherUid,
-              otherName: nameCache.current[otherUid],
-            };
-            all[`${g.id}__${d.id}`] = t;
-          });
-          const list = Object.values(all).sort((a, b) => {
-            const aa = (a.lastAt as any)?.toMillis ? (a.lastAt as any).toMillis() : 0;
-            const bb = (b.lastAt as any)?.toMillis ? (b.lastAt as any).toMillis() : 0;
-            return bb - aa;
-          });
-          setThreads(list);
-          list.forEach((r) => {
-            if (r.otherUid && !r.otherName) {
-              resolveName(r.otherUid).then((nm) => {
-                setThreads((prev) => prev.map((p) => (p.id === r.id && p.groupId === r.groupId ? { ...p, otherName: nm } : p)));
-              });
-            }
-          });
-        }, (err) => {
-          if (err && err.code !== "permission-denied") {
-            // eslint-disable-next-line no-console
-            console.warn("DM per-group listener error:", err);
-          }
-        });
-        perGroupUnsubs.current.push(unsub);
-      } catch {}
-    });
-  }
-
-  // Load my groups + aggregate members for compose
+  // Load my groups + aggregate members for compose (recipients)
   React.useEffect(() => {
     (async () => {
       if (!me) return;
       try {
-        // Load my group memberships
         const ms = await getDocs(collection(db, `users/${me}/memberships`));
         const list: MyGroup[] = [];
         for (const d of ms.docs) {
@@ -220,7 +175,6 @@ export default function DMDock() {
         }
         setMyGroups(list);
 
-        // Load members of each group and aggregate/dedupe (excluding me)
         const seen: Record<string, boolean> = {};
         const members: Member[] = [];
         for (const g of list) {
@@ -229,15 +183,18 @@ export default function DMDock() {
             for (const m of mSnap.docs) {
               if (m.id === me || seen[m.id]) continue;
               seen[m.id] = true;
-              // optional profile enrich
-              let displayName: string | undefined;
-              let email: string | undefined;
-              try {
-                const u = await getDoc(doc(db, "users", m.id));
-                const data = u.data() as DocumentData | undefined;
-                displayName = (data?.displayName as string) || undefined;
-                email = (data?.email as string) || undefined;
-              } catch {}
+              // Prefer member doc fields (tend to be readable)
+              const mdata = m.data() as DocumentData;
+              let displayName: string | undefined = (mdata?.displayName as string) || (mdata?.name as string) || undefined;
+              let email: string | undefined = (mdata?.email as string) || undefined;
+              if (!displayName || !email) {
+                try {
+                  const u = await getDoc(doc(db, "users", m.id));
+                  const data = u.data() as DocumentData | undefined;
+                  displayName = displayName || (data?.displayName as string) || (data?.name as string) || undefined;
+                  email = email || (data?.email as string) || undefined;
+                } catch {}
+              }
               members.push({ uid: m.id, displayName, email });
             }
           } catch {}
@@ -250,7 +207,7 @@ export default function DMDock() {
     })();
   }, [db, me]);
 
-  // Listen for my DM threads across all groups (requires approval)
+  // Listen for my DM threads from GLOBAL collection (requires approval)
   React.useEffect(() => {
     if (!me || !meApproved) return;
     let unsub: Unsubscribe | null = null;
@@ -258,59 +215,85 @@ export default function DMDock() {
     (async () => {
       try {
         try {
-          const q = query(
-            collectionGroup(db, "directMessages"),
-            where("users", "array-contains", me),
-            orderBy("lastAt", "desc")
-          );
-          unsub = onSnapshot(q, async (snap) => {
+          const baseQ = query(collection(db, "dmThreads"), where("users", "array-contains", me));
+          // Try with ordering first; if index missing, fallback without and sort client-side
+          const qOrdered = query(baseQ, orderBy("lastAt", "desc"));
+          unsub = onSnapshot(qOrdered, async (snap) => {
             const rows: Thread[] = [];
-            for (const d of snap.docs) {
+            snap.docs.forEach((d) => {
               const data = d.data() as DocumentData;
-              const parts = d.ref.path.split("/");
-              const groupId = parts.length >= 2 ? parts[1] : "";
               const users = (data?.users as string[]) || [];
               const otherUid = users.find((u) => u !== me) || "";
-              const t: Thread = {
+              rows.push({
                 id: d.id,
-                groupId,
                 users,
                 lastText: (data?.lastText as string) || "",
                 lastAt: data?.lastAt,
                 otherUid,
-                otherName: nameCache.current[otherUid],
-              };
-              rows.push(t);
-            }
+                otherName: (data?.userNames?.[otherUid] as string) || nameCache.current[otherUid],
+              });
+            });
+            // Fill missing names
             for (const r of rows) {
               if (r.otherUid && !r.otherName) {
-                resolveName(r.otherUid).then((nm) => {
-                  setThreads((prev) => prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p)));
-                });
+                const nm = await resolveName(r.otherUid, r.id);
+                if (cancelled) return;
+                setThreads((prev) => prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p)));
               }
             }
             if (!cancelled) setThreads(rows);
             if (rows.length === 0) { await backfillThreadsFromMessages(me); }
           }, (err) => {
-            if (err && (err.code === "permission-denied" || err.code === "failed-precondition")) {
-              setupPerGroupThreadListeners(me, myGroups);
-            } else {
+            if (err && err.code === "failed-precondition") {
+              // reattach without orderBy
+              const q2 = baseQ;
+              unsub = onSnapshot(q2, async (snap2) => {
+                const rows2: Thread[] = [];
+                snap2.docs.forEach((d) => {
+                  const data = d.data() as DocumentData;
+                  const users = (data?.users as string[]) || [];
+                  const otherUid = users.find((u) => u !== me) || "";
+                  rows2.push({
+                    id: d.id,
+                    users,
+                    lastText: (data?.lastText as string) || "",
+                    lastAt: data?.lastAt,
+                    otherUid,
+                    otherName: (data?.userNames?.[otherUid] as string) || nameCache.current[otherUid],
+                  });
+                });
+                rows2.sort((a, b) => {
+                  const aa = (a.lastAt as any)?.toMillis ? (a.lastAt as any).toMillis() : 0;
+                  const bb = (b.lastAt as any)?.toMillis ? (b.lastAt as any).toMillis() : 0;
+                  return bb - aa;
+                });
+                for (const r of rows2) {
+                  if (r.otherUid && !r.otherName) {
+                    const nm = await resolveName(r.otherUid, r.id);
+                    if (cancelled) return;
+                    setThreads((prev) => prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p)));
+                  }
+                }
+                if (!cancelled) setThreads(rows2);
+                if (rows2.length === 0) { await backfillThreadsFromMessages(me); }
+              });
+            } else if (err) {
               // eslint-disable-next-line no-console
-              console.warn("DM listener error:", err);
+              console.warn("DM thread listener error:", err);
             }
           });
         } catch {
-          setupPerGroupThreadListeners(me, myGroups);
+          // eslint-disable-next-line no-console
+          console.warn("DM thread listener attach failed");
         }
       } catch {}
     })();
     return () => {
       if (unsub) unsub();
-      clearPerGroupUnsubs();
     };
-  }, [db, me, meApproved, myGroups]);
+  }, [db, me, meApproved]);
 
-  // Load messages for active thread
+  // Load messages for active thread (GLOBAL path)
   React.useEffect(() => {
     if (!active || !me) {
       if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; }
@@ -318,7 +301,7 @@ export default function DMDock() {
       return;
     }
     if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; }
-    const colRef = collection(db, `groups/${active.groupId}/directMessages/${active.id}/messages`);
+    const colRef = collection(db, `dmMessages/${active.id}/messages`);
     const q = query(colRef, orderBy("createdAt", "asc"));
     const unsub = onSnapshot(q, (snap) => {
       const rows: ChatMsg[] = snap.docs.map((d) => {
@@ -333,28 +316,26 @@ export default function DMDock() {
         };
       });
       setMsgs(rows);
+      rows.forEach((r) => {
+        if (!r.displayName) {
+          resolveName(r.from, active.id).then((nm) => {
+            setMsgs((prev) => prev.map((m) => (m.id === r.id ? { ...m, displayName: nm } : m)));
+          });
+        }
+      });
     });
     unsubRef.current = unsub;
     return () => { if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; } };
-  }, [db, active?.groupId, active?.id, me]);
+  }, [db, active?.id, me]);
 
-  // Ensure thread group for a target uid (existing thread, or first group we both share)
-  async function ensureThreadFor(targetUid: string): Promise<{ groupId: string; pid: string }> {
+  // Ensure thread for a target uid (GLOBAL thread id)
+  async function ensureThreadFor(targetUid: string): Promise<{ pid: string }> {
     if (!me) throw new Error("No user");
-    // Prefer an existing thread
+    // Prefer an existing thread in memory
     const existing = threads.find((t) => t.otherUid === targetUid);
-    if (existing) return { groupId: existing.groupId, pid: existing.id };
-    // Find first shared group where target is a member
-    for (const g of myGroups) {
-      try {
-        const m = await getDoc(doc(db, `groups/${g.id}/members`, targetUid));
-        if (m.exists()) return { groupId: g.id, pid: pairIdFor(me, targetUid) };
-      } catch {}
-    }
-    // Fallback to my first group (keeps schema consistent)
-    const fallback = myGroups[0]?.id;
-    if (!fallback) throw new Error("No group memberships found");
-    return { groupId: fallback, pid: pairIdFor(me, targetUid) };
+    if (existing) return { pid: existing.id };
+    // Otherwise derive deterministic pairId
+    return { pid: pairIdFor(me, targetUid) };
   }
 
   async function send() {
@@ -363,20 +344,27 @@ export default function DMDock() {
     if (!txt) return;
     const toUid = active.otherUid;
     try {
-      const col = collection(db, `groups/${active.groupId}/directMessages/${active.id}/messages`);
+      const myName = (auth.currentUser?.displayName as string) || (await resolveName(me, active.id)) || "Member";
+      const otherName = active.otherName || (await resolveName(toUid, active.id));
+      // write message
+      const col = collection(db, `dmMessages/${active.id}/messages`);
       await addDoc(col, {
         text: txt,
         from: me,
         to: toUid,
-        displayName: (auth.currentUser?.displayName as string) || "Member",
+        displayName: myName,
         createdAt: serverTimestamp(),
       });
-      // upsert thread meta
-      await setDoc(
-        doc(collection(db, `groups/${active.groupId}/directMessages`), active.id),
-        { users: [me, toUid].sort(), lastText: txt, lastAt: serverTimestamp(), lastSender: me },
-        { merge: true }
-      );
+      // upsert thread meta with name map
+      const meta: Record<string, unknown> = {
+        users: [me, toUid].sort(),
+        lastText: txt,
+        lastAt: serverTimestamp(),
+        lastSender: me,
+      };
+      meta[`userNames.${me}`] = myName;
+      meta[`userNames.${toUid}`] = otherName;
+      await setDoc(doc(db, `dmThreads/${active.id}`), meta, { merge: true });
       setText("");
     } catch {
       // eslint-disable-next-line no-alert
@@ -386,26 +374,32 @@ export default function DMDock() {
 
   async function sendCompose() {
     if (!me) return;
-    const targets = Object.entries(sel).filter(([,v]) => v).map(([k]) => k);
+    const targets = Object.entries(sel).filter(([, v]) => v).map(([k]) => k);
     const body = composeText.trim();
     if (targets.length === 0 || !body) return;
     setComposeBusy(true);
     try {
       for (const toUid of targets) {
-        const { groupId, pid } = await ensureThreadFor(toUid);
-        await addDoc(collection(db, `groups/${groupId}/directMessages/${pid}/messages`), {
+        const { pid } = await ensureThreadFor(toUid);
+        const myName = (auth.currentUser?.displayName as string) || (await resolveName(me, pid)) || "Member";
+        const known = allMembers.find((m) => m.uid === toUid)?.displayName;
+        const otherName = known || (await resolveName(toUid, pid));
+        await addDoc(collection(db, `dmMessages/${pid}/messages`), {
           text: body,
           from: me,
           to: toUid,
-          displayName: (auth.currentUser?.displayName as string) || "Member",
+          displayName: myName,
           createdAt: serverTimestamp(),
         });
-        await setDoc(doc(db, `groups/${groupId}/directMessages/${pid}`), {
+        const meta: Record<string, unknown> = {
           users: [me, toUid].sort(),
           lastText: body,
           lastAt: serverTimestamp(),
           lastSender: me,
-        }, { merge: true });
+        };
+        meta[`userNames.${me}`] = myName;
+        meta[`userNames.${toUid}`] = otherName;
+        await setDoc(doc(db, `dmThreads/${pid}`), meta, { merge: true });
       }
       setComposeText("");
       setSel({});
@@ -425,7 +419,7 @@ export default function DMDock() {
     if (!msg) return;
     if (!(msg.from === me || isSuper)) return;
     try {
-      await deleteDoc(doc(db, `groups/${active.groupId}/directMessages/${active.id}/messages/${msgId}`));
+      await deleteDoc(doc(db, `dmMessages/${active.id}/messages/${msgId}`));
     } catch {
       // eslint-disable-next-line no-alert
       alert("Failed to delete message (check rules).");
@@ -434,12 +428,12 @@ export default function DMDock() {
 
   if (!me || !meApproved) return null;
 
-  const filteredMembers = allMembers.filter(m => {
+  const filteredMembers = allMembers.filter((m) => {
     const needle = filter.trim().toLowerCase();
     if (!needle) return true;
     const name = (m.displayName || "").toLowerCase();
     const email = (m.email || "").toLowerCase();
-    return name.includes(needle) || email.includes(needle) || m.uid.toLowerCase().includes(needle);
+    return name.includes(needle) || email.includes(needle);
   });
 
   // ---------- UI ----------
@@ -516,15 +510,14 @@ export default function DMDock() {
               ) : (
                 <ul>
                   {threads.map((t) => (
-                    <li key={`${t.groupId}__${t.id}`}>
+                    <li key={t.id}>
                       <button
                         type="button"
                         onClick={() => { setActive(t); setView("chat"); }}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 ${active && active.id === t.id && active.groupId === t.groupId ? "bg-slate-800" : ""}`}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 ${active && active.id === t.id ? "bg-slate-800" : ""}`}
                       >
                         <div className="font-medium truncate">{t.otherName || t.otherUid}</div>
                         <div className="text-xs text-slate-300 truncate">{t.lastText || "…"}</div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Group: {t.groupId}</div>
                       </button>
                     </li>
                   ))}
@@ -546,15 +539,18 @@ export default function DMDock() {
                     ← Back
                   </button>
                   <div className="text-sm font-semibold truncate">{active.otherName || active.otherUid}</div>
-                  <div className="text-xs text-slate-400 ml-auto hidden md:block">Group: {active.groupId}</div>
                 </div>
 
                 <div className="flex-1 overflow-auto p-3 space-y-2">
                   {msgs.map((m) => {
                     const mine = m.from === me;
                     return (
-                      <div key={m.id} className={`max-w-[85%] md:max-w-[80%] rounded-lg px-3 py-2 text-sm relative ${mine ? "ml-auto border border-slate-700" : "bg-slate-800"}`}>
-                        {m.text}
+                      <div
+                        key={m.id}
+                        className={`max-w-[85%] md:max-w-[80%] rounded-lg px-3 py-2 text-sm relative ${mine ? "ml-auto border border-slate-700" : "bg-slate-800"}`}
+                      >
+                        <div className="text-xs opacity-70 mb-0.5">{m.displayName || m.from}</div>
+                        <div>{m.text}</div>
                         {(mine || isSuper) && (
                           <button
                             type="button"
@@ -611,7 +607,7 @@ export default function DMDock() {
                     <input
                       value={filter}
                       onChange={(e) => setFilter(e.target.value)}
-                      placeholder="Search by screen name…"
+                      placeholder="Search by name or email…"
                       className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm outline-none"
                     />
                     <div className="mt-2 h-56 md:h-48 overflow-auto rounded-lg border border-slate-700">
@@ -629,7 +625,7 @@ export default function DMDock() {
                                 onChange={(e) => setSel((prev) => ({ ...prev, [m.uid]: e.target.checked }))}
                               />
                               <label htmlFor={`sel-${m.uid}`} className="text-sm truncate">
-                                {m.displayName || m.uid}{m.email ? ` • ${m.email}` : ""}
+                                {m.displayName || "(unknown user)"}{m.email ? ` • ${m.email}` : ""}
                               </label>
                             </li>
                           ))}

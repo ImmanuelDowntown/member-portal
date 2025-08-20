@@ -1,8 +1,70 @@
 diff --git a/src/components/DMDock.tsx b/src/components/DMDock.tsx
-index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..aa128214f42760739d28e26936d6dc980ea3fab6 100644
+index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9578fa5334a667f517212169ae3636b99b603221 100644
 --- a/src/components/DMDock.tsx
 +++ b/src/components/DMDock.tsx
-@@ -531,52 +531,56 @@ export default function DMDock() {
+@@ -311,50 +311,57 @@ export default function DMDock() {
+   }, [db, me, meApproved, myGroups]);
+ 
+   // Load messages for active thread
+   React.useEffect(() => {
+     if (!active || !me) {
+       if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; }
+       setMsgs([]);
+       return;
+     }
+     if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; }
+     const colRef = collection(db, `groups/${active.groupId}/directMessages/${active.id}/messages`);
+     const q = query(colRef, orderBy("createdAt", "asc"));
+     const unsub = onSnapshot(q, (snap) => {
+       const rows: ChatMsg[] = snap.docs.map((d) => {
+         const data = d.data() as DocumentData;
+         return {
+           id: d.id,
+           text: (data?.text as string) || "",
+           from: (data?.from as string) || "",
+           to: (data?.to as string) || "",
+           displayName: (data?.displayName as string) || "",
+           createdAt: data?.createdAt,
+         };
+       });
+       setMsgs(rows);
++      rows.forEach((r) => {
++        if (!r.displayName) {
++          resolveName(r.from).then((nm) => {
++            setMsgs((prev) => prev.map((m) => (m.id === r.id ? { ...m, displayName: nm } : m)));
++          });
++        }
++      });
+     });
+     unsubRef.current = unsub;
+     return () => { if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; } };
+   }, [db, active?.groupId, active?.id, me]);
+ 
+   // Ensure thread group for a target uid (existing thread, or first group we both share)
+   async function ensureThreadFor(targetUid: string): Promise<{ groupId: string; pid: string }> {
+     if (!me) throw new Error("No user");
+     // Prefer an existing thread
+     const existing = threads.find((t) => t.otherUid === targetUid);
+     if (existing) return { groupId: existing.groupId, pid: existing.id };
+     // Find first shared group where target is a member
+     for (const g of myGroups) {
+       try {
+         const m = await getDoc(doc(db, `groups/${g.id}/members`, targetUid));
+         if (m.exists()) return { groupId: g.id, pid: pairIdFor(me, targetUid) };
+       } catch {}
+     }
+     // Fallback to my first group (keeps schema consistent)
+     const fallback = myGroups[0]?.id;
+     if (!fallback) throw new Error("No group memberships found");
+     return { groupId: fallback, pid: pairIdFor(me, targetUid) };
+   }
+ 
+   async function send() {
+diff --git a/src/components/DMDock.tsx b/src/components/DMDock.tsx
+index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9578fa5334a667f517212169ae3636b99b603221 100644
+--- a/src/components/DMDock.tsx
++++ b/src/components/DMDock.tsx
+@@ -531,52 +538,56 @@ export default function DMDock() {
                  </ul>
                )}
              </div>
