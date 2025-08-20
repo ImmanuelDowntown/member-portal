@@ -29,7 +29,34 @@ type MemberDoc = {
   displayName?: string;
   email?: string;
   role?: string;
+  joinedAt?: any; // Timestamp
 };
+
+type UserRow = {
+  uid: string;
+  name?: string;
+  email?: string;
+  groups: Array<{ id: string; name: string }>;
+};
+
+const NEW_WINDOW_DAYS = 14;
+
+function tsToDate(ts: any): Date | null {
+  try {
+    if (!ts) return null;
+    if (ts.toDate) return ts.toDate();
+    if (ts instanceof Date) return ts;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isWithinDays(d: Date | null, days: number): boolean {
+  if (!d) return false;
+  const ms = days * 24 * 60 * 60 * 1000;
+  return Date.now() - d.getTime() <= ms;
+}
 
 export default function AdminGroupsIndex() {
   const db = useMemo(() => getFirestore(app), []);
@@ -41,9 +68,7 @@ export default function AdminGroupsIndex() {
 
   // Users block
   const [usersLoading, setUsersLoading] = useState(false);
-  const [userRows, setUserRows] = useState<
-    Array<{ uid: string; name?: string; email?: string; groups: Array<{ id: string; name: string }> }>
-  >([]);
+  const [userRows, setUserRows] = useState<UserRow[]>([]);
 
   // Determine super-admin and load groups user can manage
   useEffect(() => {
@@ -72,15 +97,21 @@ export default function AdminGroupsIndex() {
           const gsnap = await getDocs(query(collection(db, "groups"), orderBy("name")));
           groupIds = gsnap.docs.map((d) => d.id);
         } else {
-          // Load groups where user is group admin via collectionGroup on groupAdmins/{uid}
-          const cg = await getDocs(query(collectionGroup(db, "groupAdmins"), where(documentId(), "==", uid)));
-          groupIds = cg.docs
-            .map((d) => {
-              // parent path: groups/{groupId}/groupAdmins/{uid}
-              const parent = d.ref.parent.parent; // groups/{groupId}
-              return parent ? parent.id : "";
-            })
+          // Load groups where user is group admin via collectionGroup on groupAdmins/{uid} OR docId match
+          // Prefer documentId() match when groupAdmins docs use uid as document id
+          const cgById = await getDocs(query(collectionGroup(db, "groupAdmins"), where(documentId(), "==", uid)));
+          const idsFromDocId = cgById.docs
+            .map((d) => d.ref.parent.parent?.id || "")
             .filter(Boolean);
+
+          if (idsFromDocId.length) {
+            groupIds = idsFromDocId;
+          } else {
+            const cg = await getDocs(query(collectionGroup(db, "groupAdmins"), where("uid", "==", uid)));
+            groupIds = cg.docs
+              .map((d) => d.ref.parent.parent?.id || "")
+              .filter(Boolean);
+          }
         }
 
         // Fetch group docs + pending request counts
@@ -119,10 +150,7 @@ export default function AdminGroupsIndex() {
     async function loadUsersFromGroups() {
       try {
         setUsersLoading(true);
-        const byUser: Record<
-          string,
-          { uid: string; name?: string; email?: string; groups: Array<{ id: string; name: string }> }
-        > = {};
+        const byUser: Record<string, UserRow & { latestJoinAt?: Date | null }> = {};
         for (const g of groups) {
           try {
             const msnap = await getDocs(collection(db, `groups/${g.id}/members`));
@@ -135,16 +163,50 @@ export default function AdminGroupsIndex() {
                   name: data?.displayName,
                   email: data?.email,
                   groups: [],
+                  latestJoinAt: null,
                 };
               }
               byUser[uid].groups.push({ id: g.id, name: g.name || g.id });
+              const joinedAt = tsToDate(data?.joinedAt);
+              if (joinedAt) {
+                const current = byUser[uid].latestJoinAt;
+                if (!current || joinedAt > current) byUser[uid].latestJoinAt = joinedAt;
+              }
             });
           } catch {
             // continue
           }
           if (cancelled) return;
         }
-        const rows = Object.values(byUser).sort((a, b) => (a.name || a.uid).localeCompare(b.name || b.uid));
+
+        // Convert to rows
+        let rows: UserRow[] = Object.values(byUser).sort((a, b) => (a.name || a.uid).localeCompare(b.name || b.uid));
+
+        // Filter to "new / unapproved" users
+        if (isSuper) {
+          // Super Admin: check /users docs for isCommunityApproved or createdAt
+          const filtered: UserRow[] = [];
+          for (const r of rows) {
+            try {
+              const usnap = await getDoc(doc(db, "users", r.uid));
+              const udata = (usnap.data() || {}) as any;
+              const approved = !!udata?.isCommunityApproved;
+              const createdAt = tsToDate(udata?.createdAt);
+              const isNew = isWithinDays(createdAt, NEW_WINDOW_DAYS);
+              if (!approved || isNew) {
+                filtered.push(r);
+              }
+            } catch {
+              // if user doc missing, treat as not new & approved -> exclude
+            }
+            if (cancelled) return;
+          }
+          rows = filtered;
+        } else {
+          // Group Admin: no access to /users; approximate using recent join to any of the groups they manage
+          rows = rows.filter((r: any) => isWithinDays(r.latestJoinAt || null, NEW_WINDOW_DAYS));
+        }
+
         if (!cancelled) setUserRows(rows);
       } finally {
         if (!cancelled) setUsersLoading(false);
@@ -158,7 +220,7 @@ export default function AdminGroupsIndex() {
     return () => {
       cancelled = true;
     };
-  }, [db, groups]);
+  }, [db, groups, isSuper]);
 
   if (loading) {
     return (
@@ -248,7 +310,11 @@ export default function AdminGroupsIndex() {
         {usersLoading ? (
           <p className="text-sm text-slate-600 mt-3">Loading users…</p>
         ) : userRows.length === 0 ? (
-          <p className="text-sm text-slate-600 mt-3">No users found.</p>
+          <p className="text-sm text-slate-600 mt-3">
+            {isSuper
+              ? `No new or unapproved users in the last ${NEW_WINDOW_DAYS} days.`
+              : `No recently joined users (last ${NEW_WINDOW_DAYS} days) in your groups.`}
+          </p>
         ) : (
           <ul className="mt-3 divide-y divide-slate-200">
             {userRows.map((u) => (

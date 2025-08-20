@@ -24,7 +24,7 @@ export async function checkMessagingDiagnostics() {
       return false;
     }
   })();
-  const swReg = await navigator.serviceWorker.getRegistration();
+  const swReg = await navigator.serviceWorker.getRegistration('/sw.js');
   const perm = typeof Notification !== "undefined" ? Notification.permission : "unavailable";
   // Do not print the actual key, only presence
   const vapidKey = (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY as string | undefined;
@@ -79,7 +79,7 @@ export async function ensurePushTokenForUser(uid: string): Promise<string | null
     }
 
     // 3) Ensure /sw.js is registered
-    let reg = await navigator.serviceWorker.getRegistration();
+    let reg = await navigator.serviceWorker.getRegistration('/sw.js');
     if (!reg) {
       console.log("[push] registering /sw.js");
       try {
