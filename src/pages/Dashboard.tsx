@@ -1,8 +1,9 @@
 /* src/pages/Dashboard.tsx
-   Fix 3: Admin Console button turns yellow when EITHER
-   (a) there are PENDING group join requests this admin is responsible for, OR
-   (b) there are NEW/UNREVIEWED users (super-admins only).
-   Returns to light grey when cleared. Uses real-time listeners.
+   Fix (schema-aligned):
+   - Super-admin: /admins/{uid} exists → watch ALL membershipRequests (collectionGroup, no status filter)
+   - Group-admin: any /groups/{gid}/groupAdmins/{uid} doc exists → watch that group's membershipRequests (no status filter)
+   - New users: for super-admins, watch users where reviewed == false OR status == 'pending' OR needsReview == true
+   - Button is yellow if either condition is true, grey otherwise.
 */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +20,7 @@ import {
   query,
   where,
   onSnapshot,
+  documentId,
   Unsubscribe,
 } from "firebase/firestore";
 import { app } from "@/lib/firebase";
@@ -33,13 +35,13 @@ export default function Dashboard() {
   const db = useMemo(() => getFirestore(app), []);
   const [needsAttention, setNeedsAttention] = useState(false);
 
-  // Combine sources
-  const pendingRequestsAnyRef = useRef<boolean>(false);   // any pending membership requests for this admin
-  const newUsersAnyRef = useRef<boolean>(false);          // any new/unreviewed users (super admin only)
+  // Combined flags
+  const pendingRequestsAnyRef = useRef<boolean>(false); // any membershipRequests docs
+  const newUsersAnyRef = useRef<boolean>(false);        // new/unreviewed users (super-admin only)
 
-  // For group-admins: track per-group pending counts
-  const groupPendingCountsRef = useRef<Map<string, number>>(new Map());
+  // For group-admins: dynamic per-group listeners
   const groupUnsubsRef = useRef<Map<string, Unsubscribe>>(new Map());
+  const groupPendingCountsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -49,7 +51,7 @@ export default function Dashboard() {
       if (!cancelled) setNeedsAttention(pendingRequestsAnyRef.current || newUsersAnyRef.current);
     };
 
-    const clearAllGroupUnsubs = () => {
+    const clearGroupListeners = () => {
       groupUnsubsRef.current.forEach((u) => { try { u(); } catch {} });
       groupUnsubsRef.current.clear();
       groupPendingCountsRef.current.clear();
@@ -62,42 +64,43 @@ export default function Dashboard() {
       if (!u) return;
       const uid = u.uid;
 
-      // Determine super-admin via presence in /admins/{uid}
+      // Super-admin detection: /admins/{uid} exists
       let isSuper = false;
       try {
         const superSnap = await getDoc(doc(db, "admins", uid));
         isSuper = superSnap.exists();
       } catch { isSuper = false; }
 
-      // 1) Membership requests listeners
+      // 1) Watch membership requests (no status filter: existence == pending)
       if (isSuper) {
-        // Super-admin: watch ALL pending membership requests across groups
         try {
-          const allPendingQ = query(
-            collectionGroup(db, "membershipRequests"),
-            where("status", "==", "pending")
-          );
+          const allPendingQ = collectionGroup(db, "membershipRequests");
           unsubs.push(onSnapshot(
             allPendingQ,
             (qs) => { pendingRequestsAnyRef.current = qs.size > 0; updateFlag(); },
             () => { pendingRequestsAnyRef.current = false; updateFlag(); }
           ));
         } catch {
-          // If the collection group is not available, we simply don't set the flag here.
           pendingRequestsAnyRef.current = false;
           updateFlag();
         }
       } else {
-        // Group admin: watch groups where current user is an admin via groups.adminIds array
+        // Group-admin via /groups/{gid}/groupAdmins/{uid}
         try {
-          const myGroupsQ = query(collection(db, "groups"), where("adminIds", "array-contains", uid));
+          const myAdminDocsQ = query(
+            collectionGroup(db, "groupAdmins"),
+            where(documentId(), "==", uid)
+          );
           unsubs.push(onSnapshot(
-            myGroupsQ,
+            myAdminDocsQ,
             (qs) => {
               const nextIds = new Set<string>();
-              qs.forEach((d) => nextIds.add(d.id));
+              qs.forEach((d) => {
+                const gid = d.ref.parent.parent?.id;
+                if (gid) nextIds.add(gid);
+              });
 
-              // Unsubscribe removed groups and clear their counts
+              // Unsubscribe removed groups
               for (const [gid, unsub] of groupUnsubsRef.current.entries()) {
                 if (!nextIds.has(gid)) {
                   try { unsub(); } catch {}
@@ -106,18 +109,15 @@ export default function Dashboard() {
                 }
               }
 
-              // Subscribe to new groups
+              // Subscribe to each group's membershipRequests (existence == pending)
               nextIds.forEach((gid) => {
                 if (groupUnsubsRef.current.has(gid)) return;
-                const pendingQ = query(
-                  collection(db, `groups/${gid}/membershipRequests`),
-                  where("status", "==", "pending")
-                );
+                const pendingQ = collection(db, `groups/${gid}/membershipRequests`);
                 const gu = onSnapshot(
                   pendingQ,
                   (qs2) => {
                     groupPendingCountsRef.current.set(gid, qs2.size);
-                    // Recompute aggregate
+                    // Aggregate across groups
                     let any = false;
                     for (const count of groupPendingCountsRef.current.values()) {
                       if ((count ?? 0) > 0) { any = true; break; }
@@ -127,7 +127,6 @@ export default function Dashboard() {
                   },
                   () => {
                     groupPendingCountsRef.current.set(gid, 0);
-                    // Recompute aggregate on error
                     let any = false;
                     for (const count of groupPendingCountsRef.current.values()) {
                       if ((count ?? 0) > 0) { any = true; break; }
@@ -139,7 +138,7 @@ export default function Dashboard() {
                 groupUnsubsRef.current.set(gid, gu);
               });
 
-              // Initial recompute in case there are zero groups
+              // Recompute in case all cleared
               let any = false;
               for (const count of groupPendingCountsRef.current.values()) {
                 if ((count ?? 0) > 0) { any = true; break; }
@@ -148,17 +147,17 @@ export default function Dashboard() {
               updateFlag();
             },
             () => {
-              clearAllGroupUnsubs();
+              clearGroupListeners();
             }
           ));
         } catch {
-          clearAllGroupUnsubs();
+          clearGroupListeners();
         }
       }
 
       // 2) New/unreviewed users (super-admin only)
       if (isSuper) {
-        const tryUsersWatch = (qRef: ReturnType<typeof query>) => {
+        const watchUsers = (qRef: ReturnType<typeof query>) => {
           try {
             const unsub = onSnapshot(
               qRef,
@@ -168,10 +167,10 @@ export default function Dashboard() {
             unsubs.push(unsub);
           } catch { /* ignore */ }
         };
-        // Use the first field your schema actually supports; these are common options:
-        tryUsersWatch(query(collection(db, "users"), where("reviewed", "==", false)));
-        tryUsersWatch(query(collection(db, "users"), where("status", "==", "pending")));
-        tryUsersWatch(query(collection(db, "users"), where("needsReview", "==", true)));
+        // Use whichever your schema supports:
+        watchUsers(query(collection(db, "users"), where("reviewed", "==", false)));
+        watchUsers(query(collection(db, "users"), where("status", "==", "pending")));
+        watchUsers(query(collection(db, "users"), where("needsReview", "==", true)));
       }
     }
 
@@ -180,7 +179,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
       unsubs.forEach((u) => { try { u(); } catch {} });
-      clearAllGroupUnsubs();
+      clearGroupListeners();
     };
   }, [auth, db]);
 

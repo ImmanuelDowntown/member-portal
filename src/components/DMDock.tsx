@@ -107,10 +107,17 @@ export default function DMDock() {
   async function resolveName(uid: string) {
     if (nameCache.current[uid]) return nameCache.current[uid];
     try {
-      const snap = await getDoc(doc(db, "users", uid));
-      const nm = (snap.data()?.displayName as string) || (snap.data()?.name as string) || uid;
-      nameCache.current[uid] = nm;
-      return nm;
+      let snap = await getDoc(doc(db, "users", uid));
+      let nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
+      if (!nm) {
+        snap = await getDoc(doc(db, "admins", uid));
+        nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
+      }
+      const finalName = nm || uid;
+      nameCache.current[uid] = finalName;
+      return finalName;
+      
+
     } catch {
       return uid;
     }
