@@ -104,30 +104,20 @@ export default function DMDock() {
 
   // Resolve other user's display name cache
   const nameCache = React.useRef<Record<string, string>>({});
-  async function resolveName(uid: string, groupId?: string) {
+  async function resolveName(uid: string) {
     if (nameCache.current[uid]) return nameCache.current[uid];
     try {
-      let nm: string | undefined;
-      // Try group member doc first (more permissive security rules)
-      if (groupId) {
-        try {
-          const mem = await getDoc(doc(db, `groups/${groupId}/members`, uid));
-          nm = (mem.data()?.displayName as string) || (mem.data()?.name as string);
-        } catch {
-          // ignore
-        }
-      }
+      let snap = await getDoc(doc(db, "users", uid));
+      let nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
       if (!nm) {
-        let snap = await getDoc(doc(db, "users", uid));
+        snap = await getDoc(doc(db, "admins", uid));
         nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
-        if (!nm) {
-          snap = await getDoc(doc(db, "admins", uid));
-          nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
-        }
       }
       const finalName = nm || uid;
       nameCache.current[uid] = finalName;
       return finalName;
+      
+
     } catch {
       return uid;
     }
@@ -200,10 +190,8 @@ export default function DMDock() {
           setThreads(list);
           list.forEach((r) => {
             if (r.otherUid && !r.otherName) {
-              resolveName(r.otherUid, r.groupId).then((nm) => {
-                setThreads((prev) =>
-                  prev.map((p) => (p.id === r.id && p.groupId === r.groupId ? { ...p, otherName: nm } : p))
-                );
+              resolveName(r.otherUid).then((nm) => {
+                setThreads((prev) => prev.map((p) => (p.id === r.id && p.groupId === r.groupId ? { ...p, otherName: nm } : p)));
               });
             }
           });
@@ -241,19 +229,15 @@ export default function DMDock() {
             for (const m of mSnap.docs) {
               if (m.id === me || seen[m.id]) continue;
               seen[m.id] = true;
-              // pull from member doc first
-              const mdata = m.data() as DocumentData;
-              let displayName = (mdata?.displayName as string) || (mdata?.name as string) || undefined;
-              let email = (mdata?.email as string) || undefined;
-              // optional profile enrich if missing
-              if (!displayName || !email) {
-                try {
-                  const u = await getDoc(doc(db, "users", m.id));
-                  const data = u.data() as DocumentData | undefined;
-                  displayName = displayName || (data?.displayName as string) || (data?.name as string) || undefined;
-                  email = email || (data?.email as string) || undefined;
-                } catch {}
-              }
+              // optional profile enrich
+              let displayName: string | undefined;
+              let email: string | undefined;
+              try {
+                const u = await getDoc(doc(db, "users", m.id));
+                const data = u.data() as DocumentData | undefined;
+                displayName = (data?.displayName as string) || undefined;
+                email = (data?.email as string) || undefined;
+              } catch {}
               members.push({ uid: m.id, displayName, email });
             }
           } catch {}
@@ -300,10 +284,8 @@ export default function DMDock() {
             }
             for (const r of rows) {
               if (r.otherUid && !r.otherName) {
-                resolveName(r.otherUid, r.groupId).then((nm) => {
-                  setThreads((prev) =>
-                    prev.map((p) => (p.id === r.id && p.groupId === r.groupId ? { ...p, otherName: nm } : p))
-                  );
+                resolveName(r.otherUid).then((nm) => {
+                  setThreads((prev) => prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p)));
                 });
               }
             }

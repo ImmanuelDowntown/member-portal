@@ -1,8 +1,8 @@
 diff --git a/src/components/DMDock.tsx b/src/components/DMDock.tsx
-index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9e54abd2519679c2a83b5a43ed9049da03b55c46 100644
+index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..20f71e270c3e9e019875b30cf82339481b289a7d 100644
 --- a/src/components/DMDock.tsx
 +++ b/src/components/DMDock.tsx
-@@ -82,64 +82,74 @@ export default function DMDock() {
+@@ -82,232 +82,261 @@ export default function DMDock() {
        }
      });
      return () => unsub();
@@ -29,7 +29,7 @@ index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9e54abd2519679c2a83b5a43ed9049da
    // Resolve other user's display name cache
    const nameCache = React.useRef<Record<string, string>>({});
 -  async function resolveName(uid: string) {
-+  async function resolveName(uid: string, groupId?: string) {
++  async function resolveName(uid: string, groupId?: string, pairId?: string) {
      if (nameCache.current[uid]) return nameCache.current[uid];
      try {
 -      let snap = await getDoc(doc(db, "users", uid));
@@ -55,6 +55,13 @@ index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9e54abd2519679c2a83b5a43ed9049da
        }
        const finalName = nm || uid;
        nameCache.current[uid] = finalName;
++      // persist to thread meta if possible
++      if (nm && groupId && pairId) {
++        try {
++          const ref = doc(collection(db, `groups/${groupId}/directMessages`), pairId);
++          await setDoc(ref, { [`userNames.${uid}`]: nm }, { merge: true });
++        } catch {}
++      }
        return finalName;
 -      
 -
@@ -81,13 +88,36 @@ index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9e54abd2519679c2a83b5a43ed9049da
          if (!otherUid) continue;
          const users = [currentUid, otherUid].sort();
          const metaRef = doc(collection(db, `groups/${groupId}/directMessages`), pairId);
-         ops.push(setDoc(metaRef, {
+-        ops.push(setDoc(metaRef, {
++        const otherName = await resolveName(otherUid, groupId, pairId);
++        const meta: Record<string, unknown> = {
            users,
-diff --git a/src/components/DMDock.tsx b/src/components/DMDock.tsx
-index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9e54abd2519679c2a83b5a43ed9049da03b55c46 100644
---- a/src/components/DMDock.tsx
-+++ b/src/components/DMDock.tsx
-@@ -168,146 +178,154 @@ export default function DMDock() {
+           lastText: (data.text as string) || "",
+           lastAt: data.createdAt || serverTimestamp(),
+           lastSender: (data.from as string) || currentUid,
+-        }, { merge: true }));
++        };
++        if (data.displayName) meta[`userNames.${data.from}`] = data.displayName;
++        meta[`userNames.${otherUid}`] = otherName;
++        ops.push(setDoc(metaRef, meta, { merge: true }));
+       }
+       await Promise.allSettled(ops);
+     } catch {
+       // ignore
+     }
+   }
+ 
+   // Fallback: listen per-group if collectionGroup query is blocked by rules
+   const perGroupUnsubs = React.useRef<Unsubscribe[]>([]);
+   function clearPerGroupUnsubs() {
+     perGroupUnsubs.current.forEach((u) => { try { u(); } catch {} });
+     perGroupUnsubs.current = [];
+   }
+   function setupPerGroupThreadListeners(currentUid: string, groups: MyGroup[]) {
+     clearPerGroupUnsubs();
+     const all: Record<string, Thread> = {};
+     groups.forEach((g) => {
+       try {
          const qref = query(collection(db, `groups/${g.id}/directMessages`), where("users", "array-contains", currentUid));
          const unsub = onSnapshot(qref, (snap) => {
            snap.docs.forEach((d) => {
@@ -101,7 +131,8 @@ index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9e54abd2519679c2a83b5a43ed9049da
                lastText: (data?.lastText as string) || "",
                lastAt: data?.lastAt,
                otherUid,
-               otherName: nameCache.current[otherUid],
+-              otherName: nameCache.current[otherUid],
++              otherName: (data?.userNames?.[otherUid] as string) || nameCache.current[otherUid],
              };
              all[`${g.id}__${d.id}`] = t;
            });
@@ -115,7 +146,7 @@ index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9e54abd2519679c2a83b5a43ed9049da
              if (r.otherUid && !r.otherName) {
 -              resolveName(r.otherUid).then((nm) => {
 -                setThreads((prev) => prev.map((p) => (p.id === r.id && p.groupId === r.groupId ? { ...p, otherName: nm } : p)));
-+              resolveName(r.otherUid, r.groupId).then((nm) => {
++              resolveName(r.otherUid, r.groupId, r.id).then((nm) => {
 +                setThreads((prev) =>
 +                  prev.map((p) => (p.id === r.id && p.groupId === r.groupId ? { ...p, otherName: nm } : p))
 +                );
@@ -206,27 +237,41 @@ index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9e54abd2519679c2a83b5a43ed9049da
            unsub = onSnapshot(q, async (snap) => {
              const rows: Thread[] = [];
              for (const d of snap.docs) {
-               const data = d.data() as DocumentData;
-               const parts = d.ref.path.split("/");
-               const groupId = parts.length >= 2 ? parts[1] : "";
-               const users = (data?.users as string[]) || [];
-               const otherUid = users.find((u) => u !== me) || "";
-               const t: Thread = {
-                 id: d.id,
-                 groupId,
-                 users,
-                 lastText: (data?.lastText as string) || "",
-                 lastAt: data?.lastAt,
-                 otherUid,
-                 otherName: nameCache.current[otherUid],
-               };
+-              const data = d.data() as DocumentData;
+-              const parts = d.ref.path.split("/");
+-              const groupId = parts.length >= 2 ? parts[1] : "";
+-              const users = (data?.users as string[]) || [];
+-              const otherUid = users.find((u) => u !== me) || "";
+-              const t: Thread = {
+-                id: d.id,
+-                groupId,
+-                users,
+-                lastText: (data?.lastText as string) || "",
+-                lastAt: data?.lastAt,
+-                otherUid,
+-                otherName: nameCache.current[otherUid],
+-              };
++            const data = d.data() as DocumentData;
++            const parts = d.ref.path.split("/");
++            const groupId = parts.length >= 2 ? parts[1] : "";
++            const users = (data?.users as string[]) || [];
++            const otherUid = users.find((u) => u !== me) || "";
++            const t: Thread = {
++              id: d.id,
++              groupId,
++              users,
++              lastText: (data?.lastText as string) || "",
++              lastAt: data?.lastAt,
++              otherUid,
++              otherName: (data?.userNames?.[otherUid] as string) || nameCache.current[otherUid],
++            };
                rows.push(t);
              }
              for (const r of rows) {
                if (r.otherUid && !r.otherName) {
 -                resolveName(r.otherUid).then((nm) => {
 -                  setThreads((prev) => prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p)));
-+                resolveName(r.otherUid, r.groupId).then((nm) => {
++                resolveName(r.otherUid, r.groupId, r.id).then((nm) => {
 +                  setThreads((prev) =>
 +                    prev.map((p) => (p.id === r.id && p.groupId === r.groupId ? { ...p, otherName: nm } : p))
 +                  );
@@ -255,3 +300,123 @@ index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..9e54abd2519679c2a83b5a43ed9049da
    }, [db, me, meApproved, myGroups]);
  
    // Load messages for active thread
+diff --git a/src/components/DMDock.tsx b/src/components/DMDock.tsx
+index a367eb43b4292d7542dc6b9d6f11d33285d97c5b..20f71e270c3e9e019875b30cf82339481b289a7d 100644
+--- a/src/components/DMDock.tsx
++++ b/src/components/DMDock.tsx
+@@ -342,92 +371,105 @@ export default function DMDock() {
+   async function ensureThreadFor(targetUid: string): Promise<{ groupId: string; pid: string }> {
+     if (!me) throw new Error("No user");
+     // Prefer an existing thread
+     const existing = threads.find((t) => t.otherUid === targetUid);
+     if (existing) return { groupId: existing.groupId, pid: existing.id };
+     // Find first shared group where target is a member
+     for (const g of myGroups) {
+       try {
+         const m = await getDoc(doc(db, `groups/${g.id}/members`, targetUid));
+         if (m.exists()) return { groupId: g.id, pid: pairIdFor(me, targetUid) };
+       } catch {}
+     }
+     // Fallback to my first group (keeps schema consistent)
+     const fallback = myGroups[0]?.id;
+     if (!fallback) throw new Error("No group memberships found");
+     return { groupId: fallback, pid: pairIdFor(me, targetUid) };
+   }
+ 
+   async function send() {
+     if (!active || !me) return;
+     const txt = text.trim();
+     if (!txt) return;
+     const toUid = active.otherUid;
+     try {
+       const col = collection(db, `groups/${active.groupId}/directMessages/${active.id}/messages`);
++      const myName = (auth.currentUser?.displayName as string) || "Member";
++      const otherName =
++        allMembers.find((m) => m.uid === toUid)?.displayName || (await resolveName(toUid, active.groupId));
+       await addDoc(col, {
+         text: txt,
+         from: me,
+         to: toUid,
+-        displayName: (auth.currentUser?.displayName as string) || "Member",
++        displayName: myName,
+         createdAt: serverTimestamp(),
+       });
+-      // upsert thread meta
+-      await setDoc(
+-        doc(collection(db, `groups/${active.groupId}/directMessages`), active.id),
+-        { users: [me, toUid].sort(), lastText: txt, lastAt: serverTimestamp(), lastSender: me },
+-        { merge: true }
+-      );
++      // upsert thread meta with both participants' display names
++      const meta: Record<string, unknown> = {
++        users: [me, toUid].sort(),
++        lastText: txt,
++        lastAt: serverTimestamp(),
++        lastSender: me,
++      };
++      meta[`userNames.${me}`] = myName;
++      meta[`userNames.${toUid}`] = otherName;
++      await setDoc(doc(collection(db, `groups/${active.groupId}/directMessages`), active.id), meta, { merge: true });
+       setText("");
+     } catch {
+       // eslint-disable-next-line no-alert
+       alert("Could not send message.");
+     }
+   }
+ 
+   async function sendCompose() {
+     if (!me) return;
+     const targets = Object.entries(sel).filter(([,v]) => v).map(([k]) => k);
+     const body = composeText.trim();
+     if (targets.length === 0 || !body) return;
+     setComposeBusy(true);
+     try {
+       for (const toUid of targets) {
+         const { groupId, pid } = await ensureThreadFor(toUid);
++        const myName = (auth.currentUser?.displayName as string) || "Member";
++        const otherName =
++          allMembers.find((m) => m.uid === toUid)?.displayName || (await resolveName(toUid, groupId));
+         await addDoc(collection(db, `groups/${groupId}/directMessages/${pid}/messages`), {
+           text: body,
+           from: me,
+           to: toUid,
+-          displayName: (auth.currentUser?.displayName as string) || "Member",
++          displayName: myName,
+           createdAt: serverTimestamp(),
+         });
+-        await setDoc(doc(db, `groups/${groupId}/directMessages/${pid}`), {
++        const meta: Record<string, unknown> = {
+           users: [me, toUid].sort(),
+           lastText: body,
+           lastAt: serverTimestamp(),
+           lastSender: me,
+-        }, { merge: true });
++        };
++        meta[`userNames.${me}`] = myName;
++        meta[`userNames.${toUid}`] = otherName;
++        await setDoc(doc(db, `groups/${groupId}/directMessages/${pid}`), meta, { merge: true });
+       }
+       setComposeText("");
+       setSel({});
+       setView("list");
+     } catch {
+       // eslint-disable-next-line no-alert
+       alert("Failed to send message(s).");
+     } finally {
+       setComposeBusy(false);
+     }
+   }
+ 
+   async function deleteMessage(msgId: string) {
+     if (!active || !me) return;
+     // Allow delete if I am the sender OR I am super admin
+     const msg = msgs.find((m) => m.id === msgId);
+     if (!msg) return;
+     if (!(msg.from === me || isSuper)) return;
+     try {
+       await deleteDoc(doc(db, `groups/${active.groupId}/directMessages/${active.id}/messages/${msgId}`));
+     } catch {
+       // eslint-disable-next-line no-alert
+       alert("Failed to delete message (check rules).");
+     }
+   }
