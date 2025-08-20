@@ -1,7 +1,9 @@
 "use strict";
 // functions/src/onResourceCreated.ts
 // Fires when a new resource is added under a group and pushes a notification to the group.
-// Relies on the shared sendToGroup() helper. Exclude-logic can be centralized later in notifications.ts.
+// - Uses group-centric membership (notifications helper determines recipients)
+// - Routes clicks to /groups/:slug (user confirmed slug === groupId)
+// - Does not touch onGroupMessage/onGroupReply logic
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -50,27 +52,33 @@ exports.onResourceCreated = functions.firestore.onDocumentCreated("groups/{group
     if (!resource)
         return;
     try {
-        // Try to pull a friendly group name and slug for the click‑through URL
+        // Friendly group name and slug
         const groupDoc = await db.doc(`groups/${groupId}`).get();
-        const group = groupDoc.exists ? groupDoc.data() : undefined;
-        const groupName = group?.name ||
-            group?.title ||
-            "your group";
-        const slug = groupId; // slug is the document ID per your data model
-        const url = `/groups/${slug}`; // matches your web route: /groups/:slug
-        // Build a string‑only data payload for FCM
+        const group = groupDoc.exists ? groupDoc.data() : {};
+        const groupName = group?.name || group?.title || String(groupId);
+        const slug = group?.slug || String(groupId);
+        const url = `/groups/${encodeURIComponent(slug)}`;
+        const title = resource.title ? String(resource.title) : `New resource in ${groupName}`;
+        const body = resource.description ? String(resource.description) : "Tap to view the latest resource.";
         const payload = {
-            title: resource.title ? String(resource.title) : `New resource in ${groupName}`,
-            body: resource.description ? String(resource.description) : "Tap to view the latest resource.",
+            title,
+            body,
             url,
             type: "resource",
             icon: "/icons/icon-192.png",
             badge: "/icons/icon-192.png",
+            groupId: String(groupId),
+            resourceId: String(resourceId),
         };
         const delivered = await (0, notifications_1.sendToGroup)(groupId, payload);
-        console.log(`onResourceCreated: sent to ${delivered} users`, { groupId, resourceId, title: payload.title });
+        console.log("onResourceCreated: pushed", {
+            groupId,
+            resourceId,
+            title,
+            delivered,
+        });
     }
-    catch (e) {
-        console.error("onResourceCreated failed", e);
+    catch (err) {
+        console.error("onResourceCreated failed", err);
     }
 });

@@ -1,8 +1,9 @@
 "use strict";
 // functions/src/onGroupMessage.ts
-// Notify group members when a new message is posted in a group.
+// Notify group members when a new message or reply is posted in a group.
 // - Uses group-centric membership: groups/{groupId}/members/{uid}
 // - Excludes the author (data.uid)
+// - Respects per-member 'muted' flag on groups/{groupId}/members/{uid}
 // - Routes clicks to /groups/:slug (slug === groupId per user confirmation)
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -49,9 +50,12 @@ function previewText(text, max = 140) {
     const t = text.replace(/\s+/g, " ").trim();
     return t.length > max ? t.slice(0, max - 1) + "…" : t;
 }
-async function getMemberUids(groupId) {
+async function getActiveMemberUids(groupId, excludeUid) {
     const snap = await db.collection(`groups/${groupId}/members`).get();
-    return snap.docs.map((d) => d.id);
+    const list = snap.docs
+        .filter((d) => !(d.data()?.muted === true)) // respect per-member mute
+        .map((d) => d.id);
+    return excludeUid ? list.filter((u) => u !== excludeUid) : list;
 }
 async function getUserTokens(uid) {
     const snap = await db.collection(`users/${uid}/pushTokens`).get();
@@ -72,13 +76,13 @@ exports.onGroupMessageCreate = functions.firestore.onDocumentCreated("groups/{gr
         const authorUid = data.uid;
         // Load group for display name (fallback to groupId)
         const groupSnap = await db.doc(`groups/${groupId}`).get();
-        const group = groupSnap.exists ? groupSnap.data() : undefined;
+        const group = groupSnap.exists ? groupSnap.data() : {};
         const groupName = group?.name || groupId;
         const slug = groupId; // user confirmed: slug is the doc ID
-        // Build tokens list: all members except author
-        const memberUids = (await getMemberUids(groupId)).filter((u) => u !== authorUid);
+        // Build tokens list: all members except author, and not muted
+        const memberUids = await getActiveMemberUids(groupId, authorUid);
         if (memberUids.length === 0) {
-            console.log("onGroupMessageCreate: no recipients (after excluding author)", { groupId, messageId, authorUid });
+            console.log("onGroupMessageCreate: no recipients (after excluding author/muted)", { groupId, messageId, authorUid });
             return;
         }
         const tokenLists = await Promise.all(memberUids.map(getUserTokens));
@@ -125,7 +129,6 @@ exports.onGroupMessageCreate = functions.firestore.onDocumentCreated("groups/{gr
         console.error("onGroupMessageCreate failed", err);
     }
 });
-// Replies trigger
 exports.onGroupReplyCreate = functions.firestore.onDocumentCreated("groups/{groupId}/messages/{messageId}/replies/{replyId}", async (event) => {
     const { groupId, messageId, replyId } = event.params;
     const data = event.data?.data();
@@ -134,17 +137,16 @@ exports.onGroupReplyCreate = functions.firestore.onDocumentCreated("groups/{grou
     try {
         const replierUid = data.uid;
         const groupSnap = await db.collection("groups").doc(groupId).get();
-        const group = groupSnap.exists ? groupSnap.data() : undefined;
+        const group = groupSnap.data();
         const groupName = group?.name || groupId;
         const slug = groupId; // id is slug
-        const memberUids = await getMemberUids(groupId);
-        const recipientUids = memberUids.filter((u) => u !== replierUid);
+        const recipientUids = await getActiveMemberUids(groupId, replierUid);
         if (recipientUids.length === 0) {
-            console.log("onGroupReplyCreate: no recipients", { groupId, messageId, replyId });
+            console.log("onGroupReplyCreate: no recipients (after excluding replier/muted)", { groupId, messageId, replyId });
             return;
         }
         const tokenSets = await Promise.all(recipientUids.map((u) => getUserTokens(u)));
-        const tokens = Array.from(new Set(tokenSets.flat().filter(Boolean)));
+        const tokens = Array.from(new Set(tokenSets.flat()));
         if (tokens.length === 0) {
             console.log("onGroupReplyCreate: no device tokens for members", { groupId, messageId, replyId });
             return;
@@ -173,7 +175,7 @@ exports.onGroupReplyCreate = functions.firestore.onDocumentCreated("groups/{grou
             tokens,
         };
         const resp = await admin.messaging().sendEachForMulticast(message);
-        const success = resp.responses.filter((r) => r.success).length;
+        const success = resp.responses.filter(r => r.success).length;
         const failure = resp.responses.length - success;
         console.log("onGroupReplyCreate: sent", { groupId, messageId, replyId, tokens: tokens.length, success, failure });
     }
