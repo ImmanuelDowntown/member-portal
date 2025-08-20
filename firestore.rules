@@ -59,6 +59,14 @@ service cloud.firestore {
         allow read, list: if isSignedIn() && userUid == uid();
         allow create, update, delete: if isSignedIn() && userUid == uid();
       }
+
+      // User notifications
+      match /notifications/{notifId} {
+        // Users can read and update their own notifications
+        allow get, list, update: if isSignedIn() && userUid == uid();
+        // Creation/deletion should occur via server processes only
+        allow create, delete: if false;
+      }
     }
 
     // ---------- Groups (public read; writes via admins) ----------
@@ -153,6 +161,15 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Sunday resources ----------
+    match /sundayResources/{resourceId} {
+      // All signed-in users may view Sunday resources
+      allow get, list: if isSignedIn();
+      // Only super admins may create, update, or delete resources
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+
     // ---------- Super admin registry ----------
     match /admins/{adminUid} {
       allow get: if isSignedIn() && (adminUid == uid() || isSuperAdmin());
@@ -160,55 +177,76 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // >>> INSERTED: Global Direct Messages (new, does not affect other rules) <<<
+    // Threads: /dmThreads/{pairId}
+    match /dmThreads/{pairId} {
+      // Participants (or super admin) can read
+      allow get, list: if isSignedIn() && (isApproved() || isSuperAdmin())
+        && (uid() in get(/databases/$(database)/documents/dmThreads/$(pairId)).data.users
+            || isSuperAdmin());
+
+      // Create: exactly two users, and the caller must be one of them
+      allow create: if isSignedIn() && (isApproved() || isSuperAdmin())
+        && request.resource.data.users is list
+        && request.resource.data.users.size() == 2
+        && uid() in request.resource.data.users;
+
+      // Update: only participants (or super admin); users array cannot change
+      allow update: if isSignedIn() && (isApproved() || isSuperAdmin())
+        && (uid() in resource.data.users || isSuperAdmin())
+        && request.resource.data.users == resource.data.users;
+
+      // Delete: super admin only
+      allow delete: if isSuperAdmin();
+    }
+
+    // Messages: /dmMessages/{pairId}/messages/{msgId}
+    match /dmMessages/{pairId} {
+      match /messages/{msgId} {
+        // Read: participants or super admin
+        allow get, list: if isSignedIn() && (isApproved() || isSuperAdmin())
+          && (uid() in get(/databases/$(database)/documents/dmThreads/$(pairId)).data.users
+              || isSuperAdmin());
+
+        // Create: sender must be the authed user and both are participants
+        // (No strict check on createdAt to allow serverTimestamp())
+        allow create: if isSignedIn() && (isApproved() || isSuperAdmin())
+          && (uid() in get(/databases/$(database)/documents/dmThreads/$(pairId)).data.users)
+          && request.resource.data.from == uid()
+          && request.resource.data.to in get(/databases/$(database)/documents/dmThreads/$(pairId)).data.users
+          && (request.resource.data.text is string);
+
+        // No edits; allow delete by sender or super admin
+        allow update: if false;
+        allow delete: if isSignedIn() && (resource.data.from == uid() || isSuperAdmin());
+      }
+    }
+
+    // ---------- Public access overrides ----------
+    // Sunday White Papers (slug: sunday-resources) – allow public read by ID in common locations
+    match /pages/{pageId} {
+      allow get: if pageId == "sunday-resources";
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+    match /resources/{resId} {
+      allow get: if resId == "sunday-resources";
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+    match /groups/{groupId}/resources/sunday-resources {
+      allow get: if true;
+      allow list, create, update, delete: if false;
+    }
+    // Fallback: allow public read (get AND list) anywhere the document's slug equals "sunday-resources".
+    match /{path=**} {
+      allow get, list: if resource.data.slug == "sunday-resources";
+      allow create, update, delete: if false;
+    }
+
     // ---------- Catch‑all: super admin may read anything (queries & gets) ----------
     match /{document=**} {
       allow read: if isSuperAdmin();
     }
-
-// ---------- Global Direct Messages ----------
-// Threads: /dmThreads/{pairId}
-match /dmThreads/{pairId} {
-  // Read/list allowed only to participants or super admin
-  allow get, list: if isSignedIn() && (isApproved() || isSuperAdmin())
-    && (uid() in get(/databases/$(database)/documents/dmThreads/$(pairId)).data.users
-        || isSuperAdmin());
-
-  // Create: participants create thread meta (must include caller; exactly two users)
-  allow create: if isSignedIn() && (isApproved() || isSuperAdmin())
-    && request.resource.data.users is list
-    && request.resource.data.users.size() == 2
-    && uid() in request.resource.data.users;
-
-  // Update: only participants (or super admin); users array cannot change
-  allow update: if isSignedIn() && (isApproved() || isSuperAdmin())
-    && (uid() in resource.data.users || isSuperAdmin())
-    && request.resource.data.users == resource.data.users;
-
-  // Delete: super admin only
-  allow delete: if isSuperAdmin();
-}
-
-// Messages: /dmMessages/{pairId}/messages/{msgId}
-match /dmMessages/{pairId} {
-  match /messages/{msgId} {
-    // Read/list allowed only to participants (via dmThreads lookup) or super admin
-    allow get, list: if isSignedIn() && (isApproved() || isSuperAdmin())
-      && (uid() in get(/databases/$(database)/documents/dmThreads/$(pairId)).data.users
-          || isSuperAdmin());
-
-    // Create: sender must be the signed-in user; recipient must be thread participant
-    allow create: if isSignedIn() && (isApproved() || isSuperAdmin())
-      && (uid() in get(/databases/$(database)/documents/dmThreads/$(pairId)).data.users)
-      && request.resource.data.from == uid()
-      && request.resource.data.to in get(/databases/$(database)/documents/dmThreads/$(pairId)).data.users
-      && (request.resource.data.text is string)
-      && (request.resource.data.createdAt is timestamp);
-
-    // No edits; allow delete by sender or super-admin
-    allow update: if false;
-    allow delete: if isSignedIn() && (resource.data.from == uid() || isSuperAdmin());
-  }
-}
-
   }
 }

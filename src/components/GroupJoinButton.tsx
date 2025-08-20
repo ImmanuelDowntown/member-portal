@@ -84,10 +84,20 @@ export default function GroupJoinButton({ groupId, className = "" }: Props) {
     if (!uid) return;
     setBusy(true);
     try {
+      let displayName = auth.currentUser?.displayName || "";
+      try {
+        const profile = await getDoc(doc(db, `users/${uid}`));
+        if (profile.exists()) {
+          displayName =
+            ((profile.data() as any)?.displayName as string | undefined) || displayName;
+        }
+      } catch {
+        /* ignore */
+      }
       // Write user-owned request
       await setDoc(
         doc(db, `users/${uid}/membershipRequests/${groupId}`),
-        { groupId, requestedAt: serverTimestamp() },
+        { groupId, requestedAt: serverTimestamp(), displayName },
         { merge: true }
       );
       setStatus("pending");
@@ -95,7 +105,7 @@ export default function GroupJoinButton({ groupId, className = "" }: Props) {
       try {
         await setDoc(
           doc(db, `groups/${groupId}/membershipRequests/${uid}`),
-          { uid, requestedAt: serverTimestamp() },
+          { uid, requestedAt: serverTimestamp(), displayName },
           { merge: true }
         );
       } catch (e) {

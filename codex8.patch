@@ -1,0 +1,93 @@
+diff --git a/src/pages/Admin/AdminGroupRequests.tsx b/src/pages/Admin/AdminGroupRequests.tsx
+index 539cf295fdb74e52ef110849e93edd55b71c659b..85a7d37462264dab2e3114eaea8fbe3dedc85bc9 100644
+--- a/src/pages/Admin/AdminGroupRequests.tsx
++++ b/src/pages/Admin/AdminGroupRequests.tsx
+@@ -21,74 +21,86 @@ type Pending = {
+ export default function AdminGroupRequests() {
+   const { slug } = useParams();
+   const db = getFirestore(app);
+   const [groupName, setGroupName] = useState<string>("");
+   const [pending, setPending] = useState<Pending[]>([]);
+   const [loading, setLoading] = useState(true);
+   const [busyId, setBusyId] = useState<string>("");
+   const groupId = slug as string;
+ 
+   useEffect(() => {
+     let active = true;
+     async function load() {
+       if (!groupId) return;
+       setLoading(true);
+       try {
+         // load group title
+         const gref = doc(db, "groups", groupId);
+         const gsnap = await getDoc(gref);
+         setGroupName((gsnap.exists() && (gsnap.data() as any).name) || humanizeSlug(groupId));
+ 
+         // list pending requests
+         const reqCol = collection(db, `groups/${groupId}/membershipRequests`);
+         const snap = await getDocs(reqCol);
+         if (!active) return;
+         const list: Pending[] = [];
+-        snap.forEach((d) => list.push(d.data() as any));
++        snap.forEach((d) => list.push({ uid: d.id, ...(d.data() as any) } as Pending));
+         setPending(list);
+       } finally {
+         setLoading(false);
+       }
+     }
+     load();
+     return () => { active = false; };
+   }, [db, groupId]);
+ 
+   async function approve(p: Pending) {
+     setBusyId(p.uid);
+     try {
++      let displayName = p.displayName;
++      if (!displayName) {
++        try {
++          const uSnap = await getDoc(doc(db, "users", p.uid));
++          if (uSnap.exists()) {
++            displayName = (uSnap.data() as any)?.displayName as string | undefined;
++          }
++        } catch {
++          /* ignore */
++        }
++      }
++
+       // 1) write user membership
+       await setDoc(doc(db, `users/${p.uid}/memberships/${groupId}`), {
+         groupId,
+         approvedAt: serverTimestamp(),
+         approvedBy: "admin",
+       }, { merge: true });
+ 
+       // 2) write group member record (handy for group rosters)
+       await setDoc(doc(db, `groups/${groupId}/members/${p.uid}`), {
+         uid: p.uid,
+-        displayName: p.displayName || "Member",
++        displayName: displayName || p.uid,
+         joinedAt: serverTimestamp(),
+       }, { merge: true });
+ 
+       // 3) delete mirrored request docs
+       await Promise.all([
+         deleteDoc(doc(db, `groups/${groupId}/membershipRequests/${p.uid}`)),
+         deleteDoc(doc(db, `users/${p.uid}/membershipRequests/${groupId}`)),
+       ]);
+ 
+       // 4) update local state
+       setPending((prev) => prev.filter((x) => x.uid !== p.uid));
+     } finally {
+       setBusyId("");
+     }
+   }
+ 
+   async function deny(p: Pending) {
+     setBusyId(p.uid);
+     try {
+       await Promise.all([
+         deleteDoc(doc(db, `groups/${groupId}/membershipRequests/${p.uid}`)),
+         deleteDoc(doc(db, `users/${p.uid}/membershipRequests/${groupId}`)),
+       ]);
+       setPending((prev) => prev.filter((x) => x.uid !== p.uid));
+     } finally {

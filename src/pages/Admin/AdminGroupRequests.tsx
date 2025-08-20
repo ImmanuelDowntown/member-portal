@@ -43,7 +43,9 @@ export default function AdminGroupRequests() {
         const snap = await getDocs(reqCol);
         if (!active) return;
         const list: Pending[] = [];
-        snap.forEach((d) => list.push(d.data() as any));
+        snap.forEach((d) =>
+          list.push({ uid: d.id, ...(d.data() as any) })
+        );
         setPending(list);
       } finally {
         setLoading(false);
