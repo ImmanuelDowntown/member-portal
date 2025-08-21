@@ -17,8 +17,8 @@ service cloud.firestore {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(uid())).data.isCommunityApproved == true;
     }
     function isGroupAdmin(groupId) {
-      // Group admins tracked at groups/{groupId}/admins/{uid}
-      return isSignedIn() && exists(/databases/$(database)/documents/groups/$(groupId)/admins/$(uid()));
+      // Group admins tracked at groups/{groupId}/groupAdmins/{uid}
+      return isSignedIn() && exists(/databases/$(database)/documents/groups/$(groupId)/groupAdmins/$(uid()));
     }
     function isMemberOf(groupId) {
       // Membership tracked at groups/{groupId}/members/{uid}
@@ -94,6 +94,14 @@ service cloud.firestore {
         // Group admins and super admins can read/list pending requests
         allow get, list: if isGroupAdmin(groupId) || isSuperAdmin();
         allow update: if false;
+      }
+
+      // Group admin assignments
+      match /groupAdmins/{adminUid} {
+        // Group admins and super admins can see the admin roster
+        allow get, list: if isSignedIn() && (isGroupAdmin(groupId) || isSuperAdmin());
+        // Only super admins may modify group admins
+        allow create, update, delete: if isSignedIn() && isSuperAdmin();
       }
 
       // Group resources (docs/files metadata)

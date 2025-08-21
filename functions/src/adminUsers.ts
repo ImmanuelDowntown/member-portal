@@ -114,13 +114,18 @@ export const deleteUserAccount = onCall(
       .catch(() => ({ docs: [] as any[] }));
     const deletedGroupMembers = membersSnap && "docs" in membersSnap ? await deleteDocs((membersSnap as any).docs) : 0;
 
-    // Clean up groupAdmins (if present) where docId === uid
-    const adminsSnap = await db
+    // Clean up group admin docs (support legacy `admins` collection)
+    const groupAdminsSnap = await db
       .collectionGroup("groupAdmins")
       .where(admin.firestore.FieldPath.documentId(), "==", targetUid)
       .get()
       .catch(() => ({ docs: [] as any[] }));
-    const deletedGroupAdmins = adminsSnap && "docs" in adminsSnap ? await deleteDocs((adminsSnap as any).docs) : 0;
+    const legacyAdminsSnap = await db
+      .collectionGroup("admins")
+      .where(admin.firestore.FieldPath.documentId(), "==", targetUid)
+      .get()
+      .catch(() => ({ docs: [] as any[] }));
+    const deletedGroupAdmins = await deleteDocs([...(groupAdminsSnap as any).docs, ...(legacyAdminsSnap as any).docs]);
 
     // Optionally mark or delete the user doc
     const userRef = db.doc(`users/${targetUid}`);

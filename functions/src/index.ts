@@ -55,7 +55,7 @@ export const grantGroupAdminByEmail = functionsV1
     const targetUid = target.uid;
 
     // Grant admin on the group
-    await db.doc(`groups/${groupId}/admins/${targetUid}`).set(
+    await db.doc(`groups/${groupId}/groupAdmins/${targetUid}`).set(
       {
         grantedBy: callerUid,
         email,
@@ -100,7 +100,7 @@ export const approveMembershipRequest = functionsV1
     }
 
     const isSuper = (await db.doc(`admins/${callerUid}`).get()).exists;
-    const isGroupAdmin = (await db.doc(`groups/${groupId}/admins/${callerUid}`).get()).exists;
+    const isGroupAdmin = (await db.doc(`groups/${groupId}/groupAdmins/${callerUid}`).get()).exists;
     if (!isSuper && !isGroupAdmin) {
       throw new functionsV1.https.HttpsError("permission-denied", "Only group admins or super admins may approve requests.");
     }
