@@ -74,3 +74,68 @@ export const grantGroupAdminByEmail = functionsV1
 
     return { ok: true, groupId, uid: targetUid };
   });
+
+/**
+ * approveMembershipRequest
+ * Callable used by the Admin UI to approve a pending group membership request.
+ * Caller must be a group admin or super admin.
+ * Side effects:
+ *  - writes membership docs for user and group
+ *  - deletes mirrored membershipRequests docs
+ */
+export const approveMembershipRequest = functionsV1
+  .region("us-central1")
+  .https.onCall(async (data, context) => {
+    if (!context.auth?.uid) {
+      throw new functionsV1.https.HttpsError("unauthenticated", "Sign in required.");
+    }
+    const callerUid = context.auth.uid;
+    const db = admin.firestore();
+
+    const groupId = String(data?.groupId || "").trim();
+    const targetUid = String(data?.uid || "").trim();
+    const displayNameInput = String(data?.displayName || "").trim();
+    if (!groupId || !targetUid) {
+      throw new functionsV1.https.HttpsError("invalid-argument", "groupId and uid are required.");
+    }
+
+    const isSuper = (await db.doc(`admins/${callerUid}`).get()).exists;
+    const isGroupAdmin = (await db.doc(`groups/${groupId}/admins/${callerUid}`).get()).exists;
+    if (!isSuper && !isGroupAdmin) {
+      throw new functionsV1.https.HttpsError("permission-denied", "Only group admins or super admins may approve requests.");
+    }
+
+    await db.doc(`users/${targetUid}/memberships/${groupId}`).set(
+      {
+        groupId,
+        approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+        approvedBy: callerUid,
+      },
+      { merge: true }
+    );
+
+    const userSnap = await db.doc(`users/${targetUid}`).get();
+    const profileName =
+      (userSnap.data()?.displayName as string) ||
+      (userSnap.data()?.name as string);
+
+    await db.doc(`groups/${groupId}/members/${targetUid}`).set(
+      {
+        uid: targetUid,
+        displayName: displayNameInput || profileName || "Member",
+        joinedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    await Promise.all([
+      db.doc(`groups/${groupId}/membershipRequests/${targetUid}`)
+        .delete()
+        .catch(() => {}),
+      db.doc(`users/${targetUid}/membershipRequests/${groupId}`)
+        .delete()
+        .catch(() => {}),
+    ]);
+
+    return { ok: true, groupId, uid: targetUid };
+  });

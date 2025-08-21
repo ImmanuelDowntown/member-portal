@@ -66,11 +66,19 @@ export default function AdminGroupRequests() {
       }, { merge: true });
 
       // 2) write group member record (handy for group rosters)
-      await setDoc(doc(db, `groups/${groupId}/members/${p.uid}`), {
-        uid: p.uid,
-        displayName: p.displayName || "Member",
-        joinedAt: serverTimestamp(),
-      }, { merge: true });
+      const userSnap = await getDoc(doc(db, "users", p.uid));
+      const profileName =
+        (userSnap.data()?.displayName as string) ||
+        (userSnap.data()?.name as string);
+      await setDoc(
+        doc(db, `groups/${groupId}/members/${p.uid}`),
+        {
+          uid: p.uid,
+          displayName: p.displayName || profileName || "Member",
+          joinedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
       // 3) delete mirrored request docs
       await Promise.all([

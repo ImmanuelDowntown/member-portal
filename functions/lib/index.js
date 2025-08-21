@@ -124,7 +124,7 @@ exports.approveMembershipRequest = functionsV1
     const db = admin.firestore();
     const groupId = String(data?.groupId || "").trim();
     const targetUid = String(data?.uid || "").trim();
-    const displayName = String(data?.displayName || "").trim();
+    const displayNameInput = String(data?.displayName || "").trim();
     if (!groupId || !targetUid) {
         throw new functionsV1.https.HttpsError("invalid-argument", "groupId and uid are required.");
     }
@@ -138,14 +138,21 @@ exports.approveMembershipRequest = functionsV1
         approvedAt: admin.firestore.FieldValue.serverTimestamp(),
         approvedBy: callerUid,
     }, { merge: true });
+    const userSnap = await db.doc(`users/${targetUid}`).get();
+    const profileName = userSnap.data()?.displayName ||
+        userSnap.data()?.name;
     await db.doc(`groups/${groupId}/members/${targetUid}`).set({
         uid: targetUid,
-        displayName: displayName || "Member",
+        displayName: displayNameInput || profileName || "Member",
         joinedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
     await Promise.all([
-        db.doc(`groups/${groupId}/membershipRequests/${targetUid}`).delete().catch(() => { }),
-        db.doc(`users/${targetUid}/membershipRequests/${groupId}`).delete().catch(() => { }),
+        db.doc(`groups/${groupId}/membershipRequests/${targetUid}`)
+            .delete()
+            .catch(() => { }),
+        db.doc(`users/${targetUid}/membershipRequests/${groupId}`)
+            .delete()
+            .catch(() => { }),
     ]);
     return { ok: true, groupId, uid: targetUid };
 });
