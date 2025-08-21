@@ -96,8 +96,11 @@ export const deleteUserAccount = onCall(
     }
 
     // Clean up tokens under users/{uid}/pushTokens/*
-    const tokenSnap = await db.collection(`users/${targetUid}/pushTokens`).get();
-    const deletedTokens = await deleteDocs(tokenSnap.docs);
+    const tokenSnap = await db
+      .collection(`users/${targetUid}/pushTokens`)
+      .get()
+      .catch(() => ({ docs: [] as any[] }));
+    const deletedTokens = tokenSnap && "docs" in tokenSnap ? await deleteDocs((tokenSnap as any).docs) : 0;
 
     // Clean up user-centric memberships (if your app writes these)
     const membershipsSnap = await db.collection(`users/${targetUid}/memberships`).get().catch(() => ({ docs: [] as any[] }));
@@ -139,7 +142,7 @@ export const deleteUserAccount = onCall(
     }
 
     // Delete Firebase Auth account
-    await admin.auth().deleteUser(targetUid);
+    await admin.auth().deleteUser(targetUid).catch(() => {});
 
     const result = {
       ok: true,

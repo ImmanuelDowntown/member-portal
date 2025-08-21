@@ -111,8 +111,11 @@ exports.deleteUserAccount = (0, https_1.onCall)({ region: "us-central1", timeout
         throw new https_1.HttpsError("failed-precondition", "You cannot delete your own account.");
     }
     // Clean up tokens under users/{uid}/pushTokens/*
-    const tokenSnap = await db.collection(`users/${targetUid}/pushTokens`).get();
-    const deletedTokens = await deleteDocs(tokenSnap.docs);
+    const tokenSnap = await db
+        .collection(`users/${targetUid}/pushTokens`)
+        .get()
+        .catch(() => ({ docs: [] }));
+    const deletedTokens = tokenSnap && "docs" in tokenSnap ? await deleteDocs(tokenSnap.docs) : 0;
     // Clean up user-centric memberships (if your app writes these)
     const membershipsSnap = await db.collection(`users/${targetUid}/memberships`).get().catch(() => ({ docs: [] }));
     const deletedMemberships = membershipsSnap && "docs" in membershipsSnap ? await deleteDocs(membershipsSnap.docs) : 0;
@@ -147,7 +150,7 @@ exports.deleteUserAccount = (0, https_1.onCall)({ region: "us-central1", timeout
         }, { merge: true });
     }
     // Delete Firebase Auth account
-    await admin.auth().deleteUser(targetUid);
+    await admin.auth().deleteUser(targetUid).catch(() => { });
     const result = {
         ok: true,
         targetUid,
