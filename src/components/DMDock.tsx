@@ -172,6 +172,10 @@ export default function DMDock() {
 
   // Load all DM-approved users for compose (recipients)
   React.useEffect(() => {
+    if (!me || !meApproved) {
+      setAllMembers([]);
+      return;
+    }
     (async () => {
       try {
         const seen: Record<string, boolean> = {};
@@ -207,7 +211,7 @@ export default function DMDock() {
         setAllMembers([]);
       }
     })();
-  }, [db, me]);
+  }, [db, me, meApproved]);
 
   // Listen for my DM threads from GLOBAL collection (requires approval)
   React.useEffect(() => {
