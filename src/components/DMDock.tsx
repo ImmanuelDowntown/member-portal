@@ -43,6 +43,7 @@ type Member = {
   uid: string;
   displayName?: string;
   email?: string;
+  search?: string;
 };
 
 function pairIdFor(a: string, b: string) {
@@ -183,7 +184,10 @@ export default function DMDock() {
           const data = d.data() as DocumentData;
           const displayName = (data?.displayName as string) || (data?.name as string) || undefined;
           const email = (data?.email as string) || undefined;
-          members.push({ uid: d.id, displayName, email });
+          const search = [d.id, ...Object.values(data).filter((v): v is string => typeof v === "string")]
+            .join(" ")
+            .toLowerCase();
+          members.push({ uid: d.id, displayName, email, search });
         });
         try {
           const adminSnap = await getDocs(collection(db, "admins"));
@@ -192,7 +196,10 @@ export default function DMDock() {
             const data = d.data() as DocumentData;
             const displayName = (data?.displayName as string) || (data?.name as string) || undefined;
             const email = (data?.email as string) || undefined;
-            members.push({ uid: d.id, displayName, email });
+            const search = [d.id, ...Object.values(data).filter((v): v is string => typeof v === "string")]
+              .join(" ")
+              .toLowerCase();
+            members.push({ uid: d.id, displayName, email, search });
           });
         } catch {}
         setAllMembers(members);
@@ -466,9 +473,11 @@ export default function DMDock() {
   const filteredMembers = allMembers.filter((m) => {
     const needle = filter.trim().toLowerCase();
     if (!needle) return true;
-    const name = (m.displayName || "").toLowerCase();
-    const email = (m.email || "").toLowerCase();
-    return name.includes(needle) || email.includes(needle);
+    const haystack = [m.uid, m.displayName, m.email, m.search]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(needle);
   });
 
   // ---------- UI ----------
@@ -642,7 +651,7 @@ export default function DMDock() {
                     <input
                       value={filter}
                       onChange={(e) => setFilter(e.target.value)}
-                      placeholder="Search by name or email…"
+                      placeholder="Search users…"
                       className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm outline-none"
                     />
                     <div className="mt-2 h-56 md:h-48 overflow-auto rounded-lg border border-slate-700">
