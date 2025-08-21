@@ -66,7 +66,7 @@ async function deleteDocs(docs) {
     }
     return count;
 }
-exports.setUserDisabled = (0, https_1.onCall)({ region: "us-central1" }, async (request) => {
+exports.setUserDisabled = (0, https_1.onCall)({ region: "us-central1", enforceAppCheck: false }, async (request) => {
     const callerUid = request.auth?.uid;
     await assertSuperAdmin(callerUid);
     const { targetUid, disabled, reason } = (request.data || {});
@@ -100,7 +100,7 @@ exports.setUserDisabled = (0, https_1.onCall)({ region: "us-central1" }, async (
     firebase_functions_1.logger.info("setUserDisabled: updated", { targetUid, disabled, by: callerUid });
     return { ok: true, targetUid, disabled };
 });
-exports.deleteUserAccount = (0, https_1.onCall)({ region: "us-central1", timeoutSeconds: 540 }, async (request) => {
+exports.deleteUserAccount = (0, https_1.onCall)({ region: "us-central1", timeoutSeconds: 540, enforceAppCheck: false }, async (request) => {
     const callerUid = request.auth?.uid;
     await assertSuperAdmin(callerUid);
     const { targetUid, hardDelete } = (request.data || {});

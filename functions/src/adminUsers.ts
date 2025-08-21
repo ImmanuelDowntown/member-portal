@@ -35,7 +35,7 @@ async function deleteDocs(docs: FirebaseFirestore.QueryDocumentSnapshot[]) {
 }
 
 export const setUserDisabled = onCall(
-  { region: "us-central1" },
+  { region: "us-central1", enforceAppCheck: false },
   async (request) => {
     const callerUid = request.auth?.uid;
     await assertSuperAdmin(callerUid);
@@ -79,7 +79,7 @@ export const setUserDisabled = onCall(
 );
 
 export const deleteUserAccount = onCall(
-  { region: "us-central1", timeoutSeconds: 540 },
+  { region: "us-central1", timeoutSeconds: 540, enforceAppCheck: false },
   async (request) => {
     const callerUid = request.auth?.uid;
     await assertSuperAdmin(callerUid);
