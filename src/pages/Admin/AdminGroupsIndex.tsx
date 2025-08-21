@@ -11,7 +11,6 @@ import {
   where,
   collectionGroup,
   getCountFromServer,
-  documentId,
   type DocumentData,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";

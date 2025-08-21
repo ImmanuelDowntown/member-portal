@@ -20,7 +20,6 @@ import {
   query,
   where,
   onSnapshot,
-  documentId,
   Unsubscribe,
 } from "firebase/firestore";
 import { app } from "@/lib/firebase";
