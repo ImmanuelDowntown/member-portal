@@ -37,3 +37,6 @@ storage-debug.log
 
 # === Mac resource forks ===
 ._*
+
+
+*.patch
