@@ -25,6 +25,7 @@ export default function AdminGroupRequests() {
   const [pending, setPending] = useState<Pending[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string>("");
+  const [approved, setApproved] = useState<Record<string, boolean>>({});
   const groupId = slug as string;
 
   useEffect(() => {
@@ -86,8 +87,11 @@ export default function AdminGroupRequests() {
         deleteDoc(doc(db, `users/${p.uid}/membershipRequests/${groupId}`)),
       ]);
 
-      // 4) update local state
-      setPending((prev) => prev.filter((x) => x.uid !== p.uid));
+      // 4) update local state and show approval
+      setApproved((prev) => ({ ...prev, [p.uid]: true }));
+      setTimeout(() => {
+        setPending((prev) => prev.filter((x) => x.uid !== p.uid));
+      }, 1500);
     } finally {
       setBusyId("");
     }
@@ -143,14 +147,18 @@ export default function AdminGroupRequests() {
               <div className="flex gap-2">
                 <button
                   onClick={() => approve(p)}
-                  disabled={!!busyId}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+                  disabled={!!busyId || approved[p.uid]}
+                  className={
+                    approved[p.uid]
+                      ? "text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900"
+                      : "text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+                  }
                 >
-                  {busyId === p.uid ? "Working…" : "Approve"}
+                  {busyId === p.uid ? "Working…" : approved[p.uid] ? "Approved" : "Approve"}
                 </button>
                 <button
                   onClick={() => deny(p)}
-                  disabled={!!busyId}
+                  disabled={!!busyId || approved[p.uid]}
                   className="text-xs px-3 py-1.5 rounded-lg bg-rose-100 text-rose-800 hover:bg-rose-200 disabled:opacity-60"
                 >
                   Deny
