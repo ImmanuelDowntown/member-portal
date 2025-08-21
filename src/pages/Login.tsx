@@ -4,7 +4,7 @@ import {
   getAuth,
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithRedirect,
+  signInWithPopup,
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { app } from "@/lib/firebase";
@@ -33,10 +33,11 @@ export default function Login() {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
-
+      await signInWithPopup(auth, provider);
+      navigate("/dashboard", { replace: true });
     } catch (e: any) {
       setError("Google sign-in was cancelled or failed.");
+    } finally {
       setLoading(false);
     }
   }
