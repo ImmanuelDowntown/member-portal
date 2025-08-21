@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.approveMembershipRequest = exports.grantGroupAdminByEmail = exports.deleteUserAccount = exports.setUserDisabled = exports.registerPushToken = exports.sendTestPush = exports.onDirectMessageCreate = exports.onResourceCreated = exports.onGroupReplyCreate = exports.onGroupMessageCreate = void 0;
+exports.approveMembershipRequest = exports.grantGroupAdminByEmail = exports.deleteUserAccount = exports.setUserDisabled = exports.registerPushToken = exports.sendTestPush = exports.onDmDockMessageCreate = exports.onDirectMessageCreate = exports.onResourceCreated = exports.onGroupReplyCreate = exports.onGroupMessageCreate = void 0;
 // functions/src/index.ts
 const admin = __importStar(require("firebase-admin"));
 // Initialize Admin SDK exactly once
@@ -48,6 +48,8 @@ var onResourceCreated_1 = require("./onResourceCreated");
 Object.defineProperty(exports, "onResourceCreated", { enumerable: true, get: function () { return onResourceCreated_1.onResourceCreated; } });
 var onDirectMessage_1 = require("./onDirectMessage");
 Object.defineProperty(exports, "onDirectMessageCreate", { enumerable: true, get: function () { return onDirectMessage_1.onDirectMessageCreate; } });
+var onDmDockMessage_1 = require("./onDmDockMessage");
+Object.defineProperty(exports, "onDmDockMessageCreate", { enumerable: true, get: function () { return onDmDockMessage_1.onDmDockMessageCreate; } });
 var notifications_1 = require("./notifications");
 Object.defineProperty(exports, "sendTestPush", { enumerable: true, get: function () { return notifications_1.sendTestPush; } });
 Object.defineProperty(exports, "registerPushToken", { enumerable: true, get: function () { return notifications_1.registerPushToken; } });

@@ -10,6 +10,7 @@ if (!admin.apps.length) {
 export { onGroupMessageCreate, onGroupReplyCreate } from "./onGroupMessage";
 export { onResourceCreated } from "./onResourceCreated";
 export { onDirectMessageCreate } from "./onDirectMessage";
+export { onDmDockMessageCreate } from "./onDmDockMessage";
 export { sendTestPush, registerPushToken } from "./notifications";
 export { setUserDisabled, deleteUserAccount } from "./adminUsers";
 
