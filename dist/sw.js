@@ -1,9 +1,13 @@
 // --- Firebase/FCM-agnostic push handler (works with notification or data payloads) ---
 self.addEventListener('push', (event) => {
   let payload = {};
-  try { payload = event.data ? event.data.json() : {}; } catch (e) { payload = {}; }
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (e) {
+    payload = {};
+  }
   // FCM may nest fields under 'notification' or 'data'
-  const n = payload.notification || payload;
+  const n = payload.notification || payload.data || payload;
   const title = n.title || 'New notification';
   const options = {
     body: n.body || '',
@@ -11,7 +15,7 @@ self.addEventListener('push', (event) => {
     badge: n.badge || undefined,
     tag: n.tag || undefined,
     data: {
-      url: n.click_action || payload.click_action || n.url || payload.url || '/'
+      url: n.click_action || payload.click_action || n.url || payload.url || '/' 
     }
   };
   event.waitUntil(self.registration.showNotification(title, options));
