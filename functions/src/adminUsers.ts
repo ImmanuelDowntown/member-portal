@@ -109,23 +109,35 @@ export const deleteUserAccount = onCall(
     // Clean up group-centric members where docId === uid
     const membersSnap = await db
       .collectionGroup("members")
-      .where(admin.firestore.FieldPath.documentId(), "==", targetUid)
+      .where("uid", "==", targetUid)
       .get()
       .catch(() => ({ docs: [] as any[] }));
     const deletedGroupMembers = membersSnap && "docs" in membersSnap ? await deleteDocs((membersSnap as any).docs) : 0;
 
     // Clean up group admin docs (support legacy `admins` collection)
-    const groupAdminsSnap = await db
-      .collectionGroup("groupAdmins")
-      .where(admin.firestore.FieldPath.documentId(), "==", targetUid)
-      .get()
-      .catch(() => ({ docs: [] as any[] }));
-    const legacyAdminsSnap = await db
-      .collectionGroup("admins")
-      .where(admin.firestore.FieldPath.documentId(), "==", targetUid)
-      .get()
-      .catch(() => ({ docs: [] as any[] }));
-    const deletedGroupAdmins = await deleteDocs([...(groupAdminsSnap as any).docs, ...(legacyAdminsSnap as any).docs]);
+    const userRecord = await admin.auth().getUser(targetUid).catch(() => null);
+    const targetEmail = userRecord?.email;
+
+    const groupAdminsSnap = targetEmail
+      ? await db
+          .collectionGroup("groupAdmins")
+          .where("email", "==", targetEmail)
+          .get()
+          .catch(() => ({ docs: [] as any[] }))
+      : { docs: [] as any[] };
+    const legacyAdminsSnap = targetEmail
+      ? await db
+          .collectionGroup("admins")
+          .where("email", "==", targetEmail)
+          .get()
+          .catch(() => ({ docs: [] as any[] }))
+      : { docs: [] as any[] };
+    const deletedGroupAdmins = await deleteDocs([
+      ...(groupAdminsSnap as any).docs,
+      ...(legacyAdminsSnap as any).docs,
+    ]);
+
+    await db.doc(`admins/${targetUid}`).delete().catch(() => {});
 
     // Optionally mark or delete the user doc
     const userRef = db.doc(`users/${targetUid}`);
