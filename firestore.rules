@@ -71,7 +71,16 @@ service cloud.firestore {
         // Creation/deletion should occur via server processes only
         allow create, delete: if false;
       }
+
+      // Push notification tokens
+      match /pushTokens/{token} {
+        // Users can manage their own push tokens
+        allow create, update, delete: if isSignedIn() && userUid == uid();
+        // Push token documents are not readable or listable from clients
+        allow get, list: if false;
+      }
     }
+
 
     // ---------- Groups (public read; writes via admins) ----------
     match /groups/{groupId} {
