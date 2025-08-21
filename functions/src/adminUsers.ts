@@ -115,7 +115,9 @@ export const deleteUserAccount = onCall(
       });
     const deletedMemberships = membershipsSnap && "docs" in membershipsSnap ? await deleteDocs((membershipsSnap as any).docs) : 0;
 
-    // Clean up group-centric members where docId === uid
+    // Clean up group-centric members where docId === uid.
+    // Query by the `uid` field instead of FieldPath.documentId() to avoid
+    // "odd number of segments" errors when using collection group queries.
     const membersSnap = await db
       .collectionGroup("members")
       .where("uid", "==", targetUid)
