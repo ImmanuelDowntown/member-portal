@@ -89,8 +89,9 @@ export default function Dashboard() {
         try {
           const myAdminDocsQ = query(
             collectionGroup(db, "groupAdmins"),
-            where(documentId(), "==", uid)
+            where("uid", "==", uid)
           );
+
           unsubs.push(onSnapshot(
             myAdminDocsQ,
             (qs) => {

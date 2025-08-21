@@ -114,17 +114,29 @@ exports.deleteUserAccount = (0, https_1.onCall)({ region: "us-central1", timeout
     const tokenSnap = await db
         .collection(`users/${targetUid}/pushTokens`)
         .get()
-        .catch(() => ({ docs: [] }));
+        .catch((err) => {
+        firebase_functions_1.logger.error("pushTokens query failed", err);
+        return { docs: [] };
+    });
     const deletedTokens = tokenSnap && "docs" in tokenSnap ? await deleteDocs(tokenSnap.docs) : 0;
     // Clean up user-centric memberships (if your app writes these)
-    const membershipsSnap = await db.collection(`users/${targetUid}/memberships`).get().catch(() => ({ docs: [] }));
+    const membershipsSnap = await db
+        .collection(`users/${targetUid}/memberships`)
+        .get()
+        .catch((err) => {
+        firebase_functions_1.logger.error("memberships query failed", err);
+        return { docs: [] };
+    });
     const deletedMemberships = membershipsSnap && "docs" in membershipsSnap ? await deleteDocs(membershipsSnap.docs) : 0;
     // Clean up group-centric members where docId === uid
     const membersSnap = await db
         .collectionGroup("members")
         .where("uid", "==", targetUid)
         .get()
-        .catch(() => ({ docs: [] }));
+        .catch((err) => {
+        firebase_functions_1.logger.error("members query failed", err);
+        return { docs: [] };
+    });
     const deletedGroupMembers = membersSnap && "docs" in membersSnap ? await deleteDocs(membersSnap.docs) : 0;
     // Clean up group admin docs (support legacy `admins` collection)
     const userRecord = await admin.auth().getUser(targetUid).catch(() => null);
@@ -134,14 +146,20 @@ exports.deleteUserAccount = (0, https_1.onCall)({ region: "us-central1", timeout
             .collectionGroup("groupAdmins")
             .where("email", "==", targetEmail)
             .get()
-            .catch(() => ({ docs: [] }))
+            .catch((err) => {
+            firebase_functions_1.logger.error("groupAdmins query failed", err);
+            return { docs: [] };
+        })
         : { docs: [] };
     const legacyAdminsSnap = targetEmail
         ? await db
             .collectionGroup("admins")
             .where("email", "==", targetEmail)
             .get()
-            .catch(() => ({ docs: [] }))
+            .catch((err) => {
+            firebase_functions_1.logger.error("legacy admins query failed", err);
+            return { docs: [] };
+        })
         : { docs: [] };
     const deletedGroupAdmins = await deleteDocs([
         ...groupAdminsSnap.docs,

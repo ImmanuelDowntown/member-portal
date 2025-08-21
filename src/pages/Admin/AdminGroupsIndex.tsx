@@ -99,7 +99,8 @@ export default function AdminGroupsIndex() {
         } else {
           // Load groups where user is group admin via collectionGroup on groupAdmins/{uid} OR docId match
           // Prefer documentId() match when groupAdmins docs use uid as document id
-          const cgById = await getDocs(query(collectionGroup(db, "groupAdmins"), where(documentId(), "==", uid)));
+          const cgById = await getDocs(query(collectionGroup(db, "groupAdmins"), where("uid", "==", uid))
+);
           const idsFromDocId = cgById.docs
             .map((d) => d.ref.parent.parent?.id || "")
             .filter(Boolean);
