@@ -120,8 +120,9 @@ exports.deleteUserAccount = (0, https_1.onCall)({ region: "us-central1", timeout
     const membersSnap = await db
         .collectionGroup("members")
         .where(admin.firestore.FieldPath.documentId(), "==", targetUid)
-        .get();
-    const deletedGroupMembers = await deleteDocs(membersSnap.docs);
+        .get()
+        .catch(() => ({ docs: [] }));
+    const deletedGroupMembers = membersSnap && "docs" in membersSnap ? await deleteDocs(membersSnap.docs) : 0;
     // Clean up groupAdmins (if present) where docId === uid
     const adminsSnap = await db
         .collectionGroup("groupAdmins")
