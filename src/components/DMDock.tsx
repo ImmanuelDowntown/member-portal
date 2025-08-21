@@ -218,7 +218,7 @@ export default function DMDock() {
           const baseQ = query(collection(db, "dmThreads"), where("users", "array-contains", me));
           // Try with ordering first; if index missing, fallback without and sort client-side
           const qOrdered = query(baseQ, orderBy("lastAt", "desc"));
-          unsub = onSnapshot(qOrdered, async (snap) => {
+          unsub = onSnapshot(qOrdered, (snap) => {
             const rows: Thread[] = [];
             snap.docs.forEach((d) => {
               const data = d.data() as DocumentData;
@@ -233,21 +233,25 @@ export default function DMDock() {
                 otherName: (data?.userNames?.[otherUid] as string) || nameCache.current[otherUid],
               });
             });
-            // Fill missing names
-            for (const r of rows) {
-              if (r.otherUid && !r.otherName) {
-                const nm = await resolveName(r.otherUid, r.id);
-                if (cancelled) return;
-                setThreads((prev) => prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p)));
-              }
-            }
             if (!cancelled) setThreads(rows);
-            if (rows.length === 0) { await backfillThreadsFromMessages(me); }
+            if (rows.length === 0) { void backfillThreadsFromMessages(me); }
+            rows.forEach((r) => {
+              if (r.otherUid && !r.otherName) {
+                resolveName(r.otherUid, r.id)
+                  .then((nm) => {
+                    if (cancelled) return;
+                    setThreads((prev) =>
+                      prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p))
+                    );
+                  })
+                  .catch(() => {});
+              }
+            });
           }, (err) => {
             if (err && err.code === "failed-precondition") {
               // reattach without orderBy
               const q2 = baseQ;
-              unsub = onSnapshot(q2, async (snap2) => {
+              unsub = onSnapshot(q2, (snap2) => {
                 const rows2: Thread[] = [];
                 snap2.docs.forEach((d) => {
                   const data = d.data() as DocumentData;
@@ -267,15 +271,20 @@ export default function DMDock() {
                   const bb = (b.lastAt as any)?.toMillis ? (b.lastAt as any).toMillis() : 0;
                   return bb - aa;
                 });
-                for (const r of rows2) {
-                  if (r.otherUid && !r.otherName) {
-                    const nm = await resolveName(r.otherUid, r.id);
-                    if (cancelled) return;
-                    setThreads((prev) => prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p)));
-                  }
-                }
                 if (!cancelled) setThreads(rows2);
-                if (rows2.length === 0) { await backfillThreadsFromMessages(me); }
+                if (rows2.length === 0) { void backfillThreadsFromMessages(me); }
+                rows2.forEach((r) => {
+                  if (r.otherUid && !r.otherName) {
+                    resolveName(r.otherUid, r.id)
+                      .then((nm) => {
+                        if (cancelled) return;
+                        setThreads((prev) =>
+                          prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p))
+                        );
+                      })
+                      .catch(() => {});
+                  }
+                });
               });
             } else if (err) {
               // eslint-disable-next-line no-console
