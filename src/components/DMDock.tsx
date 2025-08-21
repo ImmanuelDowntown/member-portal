@@ -105,6 +105,16 @@ export default function DMDock() {
   const nameCache = React.useRef<Record<string, string>>({});
   async function resolveName(uid: string, pairId?: string) {
     if (nameCache.current[uid]) return nameCache.current[uid];
+    const local = allMembers.find((m) => m.uid === uid)?.displayName;
+    if (local) {
+      nameCache.current[uid] = local;
+      if (pairId) {
+        try {
+          await setDoc(doc(db, "dmThreads", pairId), { [`userNames.${uid}`]: local }, { merge: true });
+        } catch {}
+      }
+      return local;
+    }
     try {
       // Try users collection
       let snap = await getDoc(doc(db, "users", uid));
@@ -224,13 +234,14 @@ export default function DMDock() {
               const data = d.data() as DocumentData;
               const users = (data?.users as string[]) || [];
               const otherUid = users.find((u) => u !== me) || "";
+              const known = allMembers.find((m) => m.uid === otherUid)?.displayName;
               rows.push({
                 id: d.id,
                 users,
                 lastText: (data?.lastText as string) || "",
                 lastAt: data?.lastAt,
                 otherUid,
-                otherName: (data?.userNames?.[otherUid] as string) || nameCache.current[otherUid],
+                otherName: (data?.userNames?.[otherUid] as string) || known || nameCache.current[otherUid],
               });
             });
             if (!cancelled) setThreads(rows);
@@ -239,7 +250,7 @@ export default function DMDock() {
               if (r.otherUid && !r.otherName) {
                 resolveName(r.otherUid, r.id)
                   .then((nm) => {
-                    if (cancelled) return;
+                    if (cancelled || nm === r.otherUid) return;
                     setThreads((prev) =>
                       prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p))
                     );
@@ -257,13 +268,14 @@ export default function DMDock() {
                   const data = d.data() as DocumentData;
                   const users = (data?.users as string[]) || [];
                   const otherUid = users.find((u) => u !== me) || "";
+                  const known = allMembers.find((m) => m.uid === otherUid)?.displayName;
                   rows2.push({
                     id: d.id,
                     users,
                     lastText: (data?.lastText as string) || "",
                     lastAt: data?.lastAt,
                     otherUid,
-                    otherName: (data?.userNames?.[otherUid] as string) || nameCache.current[otherUid],
+                    otherName: (data?.userNames?.[otherUid] as string) || known || nameCache.current[otherUid],
                   });
                 });
                 rows2.sort((a, b) => {
@@ -277,7 +289,7 @@ export default function DMDock() {
                   if (r.otherUid && !r.otherName) {
                     resolveName(r.otherUid, r.id)
                       .then((nm) => {
-                        if (cancelled) return;
+                        if (cancelled || nm === r.otherUid) return;
                         setThreads((prev) =>
                           prev.map((p) => (p.id === r.id ? { ...p, otherName: nm } : p))
                         );
@@ -301,6 +313,17 @@ export default function DMDock() {
       if (unsub) unsub();
     };
   }, [db, me, meApproved]);
+
+  // Update thread names when member info loads
+  React.useEffect(() => {
+    setThreads((prev) =>
+      prev.map((t) => {
+        if (t.otherName && t.otherName !== t.otherUid) return t;
+        const known = allMembers.find((m) => m.uid === t.otherUid)?.displayName;
+        return known ? { ...t, otherName: known } : t;
+      })
+    );
+  }, [allMembers]);
 
   // Load messages for active thread (GLOBAL path)
   React.useEffect(() => {
@@ -354,7 +377,10 @@ export default function DMDock() {
     const toUid = active.otherUid;
     try {
       const myName = (auth.currentUser?.displayName as string) || (await resolveName(me, active.id)) || "Member";
-      const otherName = active.otherName || (await resolveName(toUid, active.id));
+      const otherName =
+        active.otherName && active.otherName !== toUid
+          ? active.otherName
+          : await resolveName(toUid, active.id);
       const metaRef = doc(db, "dmThreads", active.id);
       // ensure thread exists with participant list
       await setDoc(metaRef, { users: [me, toUid].sort() }, { merge: true });
@@ -374,7 +400,9 @@ export default function DMDock() {
         lastSender: me,
       };
       meta[`userNames.${me}`] = myName;
-      meta[`userNames.${toUid}`] = otherName;
+      if (otherName && otherName !== toUid) {
+        meta[`userNames.${toUid}`] = otherName;
+      }
       await setDoc(metaRef, meta, { merge: true });
       setText("");
     } catch {
@@ -394,7 +422,8 @@ export default function DMDock() {
         const { pid } = await ensureThreadFor(toUid);
         const myName = (auth.currentUser?.displayName as string) || (await resolveName(me, pid)) || "Member";
         const known = allMembers.find((m) => m.uid === toUid)?.displayName;
-        const otherName = known || (await resolveName(toUid, pid));
+        const otherName =
+          (known && known !== toUid) ? known : await resolveName(toUid, pid);
         const metaRef = doc(db, "dmThreads", pid);
         await setDoc(metaRef, { users: [me, toUid].sort() }, { merge: true });
         await addDoc(collection(db, "dmMessages", pid, "messages"), {
@@ -410,7 +439,9 @@ export default function DMDock() {
           lastSender: me,
         };
         meta[`userNames.${me}`] = myName;
-        meta[`userNames.${toUid}`] = otherName;
+        if (otherName && otherName !== toUid) {
+          meta[`userNames.${toUid}`] = otherName;
+        }
         await setDoc(metaRef, meta, { merge: true });
       }
       setComposeText("");
