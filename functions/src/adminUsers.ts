@@ -99,11 +99,20 @@ export const deleteUserAccount = onCall(
     const tokenSnap = await db
       .collection(`users/${targetUid}/pushTokens`)
       .get()
-      .catch(() => ({ docs: [] as any[] }));
+      .catch((err) => {
+        logger.error("pushTokens query failed", err);
+        return { docs: [] as any[] };
+      });
     const deletedTokens = tokenSnap && "docs" in tokenSnap ? await deleteDocs((tokenSnap as any).docs) : 0;
 
     // Clean up user-centric memberships (if your app writes these)
-    const membershipsSnap = await db.collection(`users/${targetUid}/memberships`).get().catch(() => ({ docs: [] as any[] }));
+    const membershipsSnap = await db
+      .collection(`users/${targetUid}/memberships`)
+      .get()
+      .catch((err) => {
+        logger.error("memberships query failed", err);
+        return { docs: [] as any[] };
+      });
     const deletedMemberships = membershipsSnap && "docs" in membershipsSnap ? await deleteDocs((membershipsSnap as any).docs) : 0;
 
     // Clean up group-centric members where docId === uid
@@ -111,7 +120,10 @@ export const deleteUserAccount = onCall(
       .collectionGroup("members")
       .where("uid", "==", targetUid)
       .get()
-      .catch(() => ({ docs: [] as any[] }));
+      .catch((err) => {
+        logger.error("members query failed", err);
+        return { docs: [] as any[] };
+      });
     const deletedGroupMembers = membersSnap && "docs" in membersSnap ? await deleteDocs((membersSnap as any).docs) : 0;
 
     // Clean up group admin docs (support legacy `admins` collection)
@@ -123,14 +135,20 @@ export const deleteUserAccount = onCall(
           .collectionGroup("groupAdmins")
           .where("email", "==", targetEmail)
           .get()
-          .catch(() => ({ docs: [] as any[] }))
+          .catch((err) => {
+            logger.error("groupAdmins query failed", err);
+            return { docs: [] as any[] };
+          })
       : { docs: [] as any[] };
     const legacyAdminsSnap = targetEmail
       ? await db
           .collectionGroup("admins")
           .where("email", "==", targetEmail)
           .get()
-          .catch(() => ({ docs: [] as any[] }))
+          .catch((err) => {
+            logger.error("legacy admins query failed", err);
+            return { docs: [] as any[] };
+          })
       : { docs: [] as any[] };
     const deletedGroupAdmins = await deleteDocs([
       ...(groupAdminsSnap as any).docs,
