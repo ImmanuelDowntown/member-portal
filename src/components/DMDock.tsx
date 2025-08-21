@@ -45,8 +45,6 @@ type Member = {
   email?: string;
 };
 
-type MyGroup = { id: string; name?: string };
-
 function pairIdFor(a: string, b: string) {
   return [a, b].sort().join("_");
 }
@@ -93,8 +91,7 @@ export default function DMDock() {
   const [text, setText] = React.useState("");
   const unsubRef = React.useRef<Unsubscribe | null>(null);
 
-  // Compose state (no group picker; we aggregate members across all my groups)
-  const [myGroups, setMyGroups] = React.useState<MyGroup[]>([]);
+  // Compose state (recipients are all DM-approved users)
   const [allMembers, setAllMembers] = React.useState<Member[]>([]);
   const [sel, setSel] = React.useState<Record<string, boolean>>({});
   const [composeText, setComposeText] = React.useState("");
@@ -172,46 +169,34 @@ export default function DMDock() {
     }
   }
 
-  // Load my groups + aggregate members for compose (recipients)
+  // Load all DM-approved users for compose (recipients)
   React.useEffect(() => {
     (async () => {
-      if (!me) return;
       try {
-        const ms = await getDocs(collection(db, `users/${me}/memberships`));
-        const list: MyGroup[] = [];
-        for (const d of ms.docs) {
-          const gid = d.id;
-          list.push({ id: gid });
-        }
-        setMyGroups(list);
-
         const seen: Record<string, boolean> = {};
         const members: Member[] = [];
-        for (const g of list) {
-          try {
-            const mSnap = await getDocs(collection(db, `groups/${g.id}/members`));
-            for (const m of mSnap.docs) {
-              if (m.id === me || seen[m.id]) continue;
-              seen[m.id] = true;
-              // Prefer member doc fields (tend to be readable)
-              const mdata = m.data() as DocumentData;
-              let displayName: string | undefined = (mdata?.displayName as string) || (mdata?.name as string) || undefined;
-              let email: string | undefined = (mdata?.email as string) || undefined;
-              if (!displayName || !email) {
-                try {
-                  const u = await getDoc(doc(db, "users", m.id));
-                  const data = u.data() as DocumentData | undefined;
-                  displayName = displayName || (data?.displayName as string) || (data?.name as string) || undefined;
-                  email = email || (data?.email as string) || undefined;
-                } catch {}
-              }
-              members.push({ uid: m.id, displayName, email });
-            }
-          } catch {}
-        }
+        const q = query(collection(db, "users"), where("isCommunityApproved", "==", true));
+        const snap = await getDocs(q);
+        snap.docs.forEach((d) => {
+          if (d.id === me) return;
+          seen[d.id] = true;
+          const data = d.data() as DocumentData;
+          const displayName = (data?.displayName as string) || (data?.name as string) || undefined;
+          const email = (data?.email as string) || undefined;
+          members.push({ uid: d.id, displayName, email });
+        });
+        try {
+          const adminSnap = await getDocs(collection(db, "admins"));
+          adminSnap.docs.forEach((d) => {
+            if (d.id === me || seen[d.id]) return;
+            const data = d.data() as DocumentData;
+            const displayName = (data?.displayName as string) || (data?.name as string) || undefined;
+            const email = (data?.email as string) || undefined;
+            members.push({ uid: d.id, displayName, email });
+          });
+        } catch {}
         setAllMembers(members);
       } catch {
-        setMyGroups([]);
         setAllMembers([]);
       }
     })();
