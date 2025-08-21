@@ -78,7 +78,6 @@
 │   │   ├── ForgotPassword.tsx
 │   │   ├── Forums.tsx
 │   │   ├── GroupDetail.tsx
-│   │   ├── GroupDirectMessages.tsx
 │   │   ├── Groups.tsx
 │   │   ├── GroupsExplore.tsx
 │   │   ├── Login.tsx

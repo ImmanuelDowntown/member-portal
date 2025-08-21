@@ -99,14 +99,6 @@ export default function GroupDetail() {
   const [saving, setSaving] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Direct Messages (multi-select in-page)
-  const [dmFilter, setDmFilter] = React.useState<string>("");
-  const [dmSelections, setDmSelections] = React.useState<Record<string, boolean>>({});
-  const [dmText, setDmText] = React.useState<string>("");
-  const [dmSending, setDmSending] = React.useState<boolean>(false);
-  const [dmError, setDmError] = React.useState<string>("");
-  const [dmSuccess, setDmSuccess] = React.useState<boolean>(false);
-
   // NEW: my membership + mute toggle
   const me = auth.currentUser?.uid || null;
   const myMembership = React.useMemo(() => members.find((m) => m.uid === me) || null, [members, me]);
@@ -115,11 +107,6 @@ export default function GroupDetail() {
     setMuted(!!myMembership?.muted);
   }, [myMembership?.muted]);
 
-  const hasDmSelection = React.useMemo(() => Object.values(dmSelections).some(Boolean), [dmSelections]);
-
-  function pairIdFor(a: string, b: string) {
-    return [a, b].sort().join("_");
-  }
 
   async function safeExists(r: DocumentReference) {
     try {
@@ -408,60 +395,6 @@ export default function GroupDetail() {
     } finally { setReplySending(false); }
   }
 
-  // Direct messages helpers (bulk send on page)
-  const dmCandidates = React.useMemo(() => {
-    const mine = auth.currentUser?.uid;
-    const needle = dmFilter.trim().toLowerCase();
-    return members
-      .filter((m) => m.uid !== mine)
-      .filter((m) => {
-        if (!needle) return true;
-        const name = (m.displayName || "").toLowerCase();
-        const email = (m.email || "").toLowerCase();
-        return name.includes(needle) || email.includes(needle) || m.uid.toLowerCase().includes(needle);
-      });
-  }, [members, dmFilter, auth.currentUser]);
-
-  async function sendDirectMessages(e: React.FormEvent) {
-    e.preventDefault();
-    setDmError("");
-    setDmSuccess(false);
-    const mine = auth.currentUser?.uid;
-    if (!mine) { setDmError("You must be signed in."); return; }
-    const text = dmText.trim();
-    if (!text) { setDmError("Enter a message."); return; }
-    const targets = Object.entries(dmSelections).filter(([, v]) => v).map(([k]) => k);
-    if (targets.length === 0) { setDmError("Select at least one member."); return; }
-    setDmSending(true);
-    try {
-      for (const toUid of targets) {
-        const pid = pairIdFor(mine, toUid);
-        await addDoc(collection(db, `groups/${slug}/directMessages/${pid}/messages`), {
-          text,
-          from: mine,
-          to: toUid,
-          displayName: auth.currentUser?.displayName || "Member",
-          createdAt: serverTimestamp(),
-        });
-        // upsert thread metadata for the global dock to list
-        await setDoc(doc(db, `groups/${slug}/directMessages/${pid}`), {
-          users: [mine, toUid].sort(),
-          lastText: text,
-          lastAt: serverTimestamp(),
-          lastSender: mine,
-        }, { merge: true });
-      }
-      setDmText("");
-      setDmSelections({});
-      setDmSuccess(true);
-      window.setTimeout(() => setDmSuccess(false), 2000);
-    } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message || "Failed to send DM(s).";
-      setDmError(msg);
-    } finally {
-      setDmSending(false);
-    }
-  }
 
   if (loading) {
     return (
@@ -771,66 +704,6 @@ export default function GroupDetail() {
               </div>
             </div>
           )}
-        </section>
-
-        {/* Direct Messages (bulk send within the group) */}
-        <section className="mt-6 rounded-xl border border-border bg-card p-5">
-          <h2 className="text-lg font-semibold text-accent">Direct Messages</h2>
-          <p className="text-sm text-text2 mt-1">Select one or more members and send a private message.</p>
-
-          <div className="mt-3 grid gap-2 sm:grid-cols-6">
-            <input
-              type="text"
-              value={dmFilter}
-              onChange={(e) => setDmFilter(e.target.value)}
-              placeholder="Search members…"
-              className="sm:col-span-3 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
-              aria-label="Filter members for DM"
-            />
-            <div className="sm:col-span-3 max-h-48 overflow-auto rounded-lg border border-border bg-background p-2">
-              {dmCandidates.length === 0 ? (
-                <p className="text-xs text-text2">No members to message.</p>
-              ) : (
-                <ul className="space-y-1">
-                  {dmCandidates.map((m) => (
-                    <li key={m.uid} className="flex items-center gap-2">
-                      <input
-                        id={`dm-${m.uid}`}
-                        type="checkbox"
-                        checked={!!dmSelections[m.uid]}
-                        onChange={(e) => setDmSelections((prev) => ({ ...prev, [m.uid]: e.target.checked }))}
-                        className="h-4 w-4"
-                      />
-                      <label htmlFor={`dm-${m.uid}`} className="text-sm">
-                        {m.displayName || m.uid}{m.email ? ` • ${m.email}` : ""}
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          <form onSubmit={sendDirectMessages} className="mt-3 grid gap-2 sm:grid-cols-6">
-            <textarea
-              value={dmText}
-              onChange={(e) => setDmText(e.target.value)}
-              placeholder="Write a private message…"
-              className="sm:col-span-5 min-h-[3.25rem] rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
-            />
-            <div className="sm:col-span-1">
-              <button
-                type="submit"
-                disabled={dmSending || !hasDmSelection || !dmText.trim()}
-                className="w-full rounded-lg bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-800 disabled:opacity-60"
-                title={!hasDmSelection ? "Select at least one member" : undefined}
-              >
-                {dmSending ? "Sending…" : "Send DM"}
-              </button>
-            </div>
-          </form>
-          {dmError && <p className="mt-2 text-sm text-rose-700">{dmError}</p>}
-          {dmSuccess && <p className="mt-2 text-sm text-emerald-700">Message sent.</p>}
         </section>
 
         {/* Team */}

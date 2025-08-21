@@ -27,7 +27,6 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import Welcome from "@/pages/Welcome";
 import SundayResources from "@/pages/SundayResources";
-import GroupDirectMessages from "@/pages/GroupDirectMessages";
 
 
 // Admin Pages
@@ -90,7 +89,6 @@ export default function App() {
             {/* Groups Explore + Detail */}
             <Route path="/groups/explore" element={<AuthRoute><OnboardRoute><GroupsExplore /></OnboardRoute></AuthRoute>} />
             <Route path="/groups/:slug" element={<AuthRoute><OnboardRoute><GroupDetail /></OnboardRoute></AuthRoute>} />
-            <Route path="/groups/:slug/dm/:otherUid" element={<AuthRoute><OnboardRoute><GroupDirectMessages /></OnboardRoute></AuthRoute>} />
 
 
             {/* Admin routes */}
