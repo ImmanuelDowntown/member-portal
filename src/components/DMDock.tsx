@@ -355,6 +355,9 @@ export default function DMDock() {
     try {
       const myName = (auth.currentUser?.displayName as string) || (await resolveName(me, active.id)) || "Member";
       const otherName = active.otherName || (await resolveName(toUid, active.id));
+      const metaRef = doc(db, `dmThreads/${active.id}`);
+      // ensure thread exists with participant list
+      await setDoc(metaRef, { users: [me, toUid].sort() }, { merge: true });
       // write message
       const col = collection(db, `dmMessages/${active.id}/messages`);
       await addDoc(col, {
@@ -364,16 +367,15 @@ export default function DMDock() {
         displayName: myName,
         createdAt: serverTimestamp(),
       });
-      // upsert thread meta with name map
+      // update thread meta with latest info and name map
       const meta: Record<string, unknown> = {
-        users: [me, toUid].sort(),
         lastText: txt,
         lastAt: serverTimestamp(),
         lastSender: me,
       };
       meta[`userNames.${me}`] = myName;
       meta[`userNames.${toUid}`] = otherName;
-      await setDoc(doc(db, `dmThreads/${active.id}`), meta, { merge: true });
+      await setDoc(metaRef, meta, { merge: true });
       setText("");
     } catch {
       // eslint-disable-next-line no-alert
@@ -393,6 +395,8 @@ export default function DMDock() {
         const myName = (auth.currentUser?.displayName as string) || (await resolveName(me, pid)) || "Member";
         const known = allMembers.find((m) => m.uid === toUid)?.displayName;
         const otherName = known || (await resolveName(toUid, pid));
+        const metaRef = doc(db, `dmThreads/${pid}`);
+        await setDoc(metaRef, { users: [me, toUid].sort() }, { merge: true });
         await addDoc(collection(db, `dmMessages/${pid}/messages`), {
           text: body,
           from: me,
@@ -401,14 +405,13 @@ export default function DMDock() {
           createdAt: serverTimestamp(),
         });
         const meta: Record<string, unknown> = {
-          users: [me, toUid].sort(),
           lastText: body,
           lastAt: serverTimestamp(),
           lastSender: me,
         };
         meta[`userNames.${me}`] = myName;
         meta[`userNames.${toUid}`] = otherName;
-        await setDoc(doc(db, `dmThreads/${pid}`), meta, { merge: true });
+        await setDoc(metaRef, meta, { merge: true });
       }
       setComposeText("");
       setSel({});
