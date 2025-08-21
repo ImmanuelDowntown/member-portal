@@ -107,6 +107,10 @@ exports.onGroupMessageCreate = functions.firestore.onDocumentCreated("groups/{gr
                 messageId,
             },
             webpush: {
+                notification: {
+                    title: `New message in ${groupName}`,
+                    body,
+                },                
                 fcmOptions: {
                     link: url,
                 },
@@ -168,6 +172,10 @@ exports.onGroupReplyCreate = functions.firestore.onDocumentCreated("groups/{grou
                 replyId,
             },
             webpush: {
+                notification: {
+                    title: `New reply in ${groupName}`,
+                    body,
+                },
                 fcmOptions: {
                     link: url,
                 },

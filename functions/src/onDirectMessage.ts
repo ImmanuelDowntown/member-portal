@@ -86,6 +86,10 @@ export const onDirectMessageCreate = functions.firestore.onDocumentCreated(
           fromUid: authorUid,
         },
         webpush: {
+          notification: {
+            title: `Message from ${senderName}`,
+            body,
+          },
           fcmOptions: {
             link: url,
           },

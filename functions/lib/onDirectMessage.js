@@ -107,6 +107,10 @@ exports.onDirectMessageCreate = functions.firestore.onDocumentCreated("groups/{g
                 fromUid: authorUid,
             },
             webpush: {
+                notification: {
+                    title: `Message from ${senderName}`,
+                    body,
+                },
                 fcmOptions: {
                     link: url,
                 },

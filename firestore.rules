@@ -27,10 +27,14 @@ service cloud.firestore {
 
     // ---------- Users ----------
     match /users/{userUid} {
-      // Read: user reads own doc; super admin can read any
-      allow get: if isSignedIn() && (userUid == uid() || isSuperAdmin());
-      // List: super admin may list
-      allow list: if isSuperAdmin();
+      // Read: user reads own doc; super admin or approved users can read approved profiles
+      allow get: if isSignedIn() && (
+        userUid == uid() ||
+        isSuperAdmin() ||
+        (isApproved() && resource.data.isCommunityApproved == true)
+      );
+      // List: super admin or approved users may list
+      allow list: if isSignedIn() && (isSuperAdmin() || isApproved());
 
       // Write: user may update own profile; super admin can update any
       allow create, update: if isSignedIn() && (userUid == uid() || isSuperAdmin());
@@ -49,8 +53,8 @@ service cloud.firestore {
       match /membershipRequests/{groupId} {
         // Owner can create/cancel and read their own request; super admin may read
         allow create: if isSignedIn() && userUid == uid();
-        allow delete: if isSignedIn() && userUid == uid();
-        allow get, list: if isSignedIn() && (userUid == uid() || isSuperAdmin());
+        allow delete: if isSignedIn() &&
+                (userUid == uid() || isGroupAdmin(groupId) || isSuperAdmin());        allow get, list: if isSignedIn() && (userUid == uid() || isSuperAdmin());
         allow update: if false;
       }
 
@@ -180,8 +184,8 @@ service cloud.firestore {
 
     // ---------- Super admin registry ----------
     match /admins/{adminUid} {
-      allow get: if isSignedIn() && (adminUid == uid() || isSuperAdmin());
-      allow list: if isSuperAdmin();
+      allow get: if isSignedIn() && (adminUid == uid() || isSuperAdmin() || isApproved());
+      allow list: if isSignedIn() && (isSuperAdmin() || isApproved());
       allow write: if isSuperAdmin();
     }
 
