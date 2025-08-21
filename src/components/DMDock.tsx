@@ -119,7 +119,7 @@ export default function DMDock() {
         if (pairId) {
           // Persist into dmThreads for faster next-time lookups
           try {
-            await setDoc(doc(db, `dmThreads/${pairId}`), { [`userNames.${uid}`]: nm }, { merge: true });
+            await setDoc(doc(db, "dmThreads", pairId), { [`userNames.${uid}`]: nm }, { merge: true });
           } catch {}
         }
         return nm;
@@ -147,7 +147,7 @@ export default function DMDock() {
         const otherUid = (data.from === currentUid ? data.to : data.from) as string;
         if (!otherUid) continue;
         const users = [currentUid, otherUid].sort();
-        const metaRef = doc(db, `dmThreads/${pairId}`);
+        const metaRef = doc(db, "dmThreads", pairId);
         const meta: Record<string, unknown> = {
           users,
           lastText: (data.text as string) || "",
@@ -310,7 +310,7 @@ export default function DMDock() {
       return;
     }
     if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; }
-    const colRef = collection(db, `dmMessages/${active.id}/messages`);
+    const colRef = collection(db, "dmMessages", active.id, "messages");
     const q = query(colRef, orderBy("createdAt", "asc"));
     const unsub = onSnapshot(q, (snap) => {
       const rows: ChatMsg[] = snap.docs.map((d) => {
@@ -355,11 +355,11 @@ export default function DMDock() {
     try {
       const myName = (auth.currentUser?.displayName as string) || (await resolveName(me, active.id)) || "Member";
       const otherName = active.otherName || (await resolveName(toUid, active.id));
-      const metaRef = doc(db, `dmThreads/${active.id}`);
+      const metaRef = doc(db, "dmThreads", active.id);
       // ensure thread exists with participant list
       await setDoc(metaRef, { users: [me, toUid].sort() }, { merge: true });
       // write message
-      const col = collection(db, `dmMessages/${active.id}/messages`);
+      const col = collection(db, "dmMessages", active.id, "messages");
       await addDoc(col, {
         text: txt,
         from: me,
@@ -395,9 +395,9 @@ export default function DMDock() {
         const myName = (auth.currentUser?.displayName as string) || (await resolveName(me, pid)) || "Member";
         const known = allMembers.find((m) => m.uid === toUid)?.displayName;
         const otherName = known || (await resolveName(toUid, pid));
-        const metaRef = doc(db, `dmThreads/${pid}`);
+        const metaRef = doc(db, "dmThreads", pid);
         await setDoc(metaRef, { users: [me, toUid].sort() }, { merge: true });
-        await addDoc(collection(db, `dmMessages/${pid}/messages`), {
+        await addDoc(collection(db, "dmMessages", pid, "messages"), {
           text: body,
           from: me,
           to: toUid,
@@ -431,7 +431,7 @@ export default function DMDock() {
     if (!msg) return;
     if (!(msg.from === me || isSuper)) return;
     try {
-      await deleteDoc(doc(db, `dmMessages/${active.id}/messages/${msgId}`));
+      await deleteDoc(doc(db, "dmMessages", active.id, "messages", msgId));
     } catch {
       // eslint-disable-next-line no-alert
       alert("Failed to delete message (check rules).");
