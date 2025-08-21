@@ -18,6 +18,7 @@ import {
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
+import GroupChat from "@/components/groups/GroupChat";
 
 type GroupDoc = {
   name?: string;
@@ -287,6 +288,11 @@ export default function GroupDetail() {
               </label>
             </div>
           )}
+        </div>
+
+        {/* Team Chat */}
+        <div className="mt-6">
+          <GroupChat groupId={slug} />
         </div>
 
         {/* Resources */}
