@@ -155,13 +155,18 @@ export const deleteUserAccount = onCall(
       ...(legacyAdminsSnap as any).docs,
     ]);
 
-    await db.doc(`admins/${targetUid}`).delete().catch(() => {});
+    await db
+      .doc(`admins/${targetUid}`)
+      .delete()
+      .catch((err) => logger.error("admin doc delete failed", err));
 
     // Optionally mark or delete the user doc
     const userRef = db.doc(`users/${targetUid}`);
     let userDocDeleted = false;
     if (hardDelete) {
-      await userRef.delete().catch(() => {});
+      await userRef
+        .delete()
+        .catch((err) => logger.error("user doc delete failed", err));
       userDocDeleted = true;
     } else {
       const now = admin.firestore.FieldValue.serverTimestamp();
@@ -177,7 +182,10 @@ export const deleteUserAccount = onCall(
     }
 
     // Delete Firebase Auth account
-    await admin.auth().deleteUser(targetUid).catch(() => {});
+    await admin
+      .auth()
+      .deleteUser(targetUid)
+      .catch((err) => logger.error("auth user delete failed", err));
 
     const result = {
       ok: true,
