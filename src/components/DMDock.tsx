@@ -438,6 +438,13 @@ export default function DMDock() {
     }
   }
 
+  function startCompose() {
+    setSel({});
+    setFilter("");
+    setComposeText("");
+    setView("compose");
+  }
+
   if (!me || !meApproved) return null;
 
   const filteredMembers = allMembers.filter((m) => {
@@ -485,7 +492,7 @@ export default function DMDock() {
             {view !== "compose" ? (
               <button
                 type="button"
-                onClick={() => setView("compose")}
+                onClick={startCompose}
                 className="text-xs rounded-md border border-slate-700 px-2 py-1"
                 aria-label="New message"
               >
@@ -510,13 +517,13 @@ export default function DMDock() {
                 <span>Conversations</span>
                 <button
                   type="button"
-                  onClick={() => setView("compose")}
+                  onClick={startCompose}
                   className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
                   title="New message"
                 >
                   New
                 </button>
-              </div>
+                </div>
               {threads.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-slate-300">No conversations yet.</div>
               ) : (
