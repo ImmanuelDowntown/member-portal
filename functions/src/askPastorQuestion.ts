@@ -17,7 +17,9 @@ const PASTOR_UID =
     | string
     | undefined;
 
-export const askPastorQuestion = https.onCall({ region: "us-central1" }, async (request) => {
+export const askPastorQuestion = https.onCall(
+  { region: "us-central1", invoker: "public" },
+  async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
     throw new https.HttpsError("unauthenticated", "Sign in required.");
