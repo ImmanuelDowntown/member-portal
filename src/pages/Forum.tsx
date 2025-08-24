@@ -37,6 +37,10 @@ export default function Forum() {
   const [resTitle, setResTitle] = useState("");
   const [resUrl, setResUrl] = useState("");
   const [resNote, setResNote] = useState("");
+  const [questionModalOpen, setQuestionModalOpen] = useState(false);
+  const [questionText, setQuestionText] = useState("");
+  const [questionMessage, setQuestionMessage] = useState("");
+  const [questionError, setQuestionError] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, "sundayResources"), orderBy("createdAt", "asc"));
@@ -122,21 +126,69 @@ export default function Forum() {
     await deleteDoc(doc(db, "forumResources", id));
   };
 
-  const handleAskQuestion = async () => {
-    const text = window.prompt("Send a question to the pastor:")?.trim();
+  const handleAskQuestion = () => {
+    setQuestionModalOpen(true);
+    setQuestionText("");
+    setQuestionMessage("");
+    setQuestionError(false);
+  };
+
+  const submitQuestion = async (e: FormEvent) => {
+    e.preventDefault();
+    const text = questionText.trim();
     if (!text) return;
     try {
       await askPastorQuestion(text);
-      // eslint-disable-next-line no-alert
-      alert("Question sent.");
+      setQuestionMessage("Question sent.");
+      setQuestionError(false);
+      setQuestionText("");
     } catch {
-      // eslint-disable-next-line no-alert
-      alert("Could not send question.");
+      setQuestionMessage("Could not send question.");
+      setQuestionError(true);
     }
   };
 
   return (
-    <div className="container py-8 md:py-12">
+    <>
+      {questionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-md bg-background p-4">
+            <h2 className="mb-2 text-lg font-semibold">Ask a Question</h2>
+            <form onSubmit={submitQuestion} className="space-y-3">
+              <textarea
+                value={questionText}
+                onChange={(e) => setQuestionText(e.target.value)}
+                placeholder="Type your question"
+                className="w-full rounded-md border border-border bg-background p-2"
+                rows={4}
+              />
+              {questionMessage && (
+                <p
+                  className={`text-sm ${questionError ? "text-red-500" : "text-green-600"}`}
+                >
+                  {questionMessage}
+                </p>
+              )}
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setQuestionModalOpen(false)}
+                  className="rounded-md border border-border px-4 py-2"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-md bg-accent px-4 py-2 text-slate-900"
+                >
+                  Send
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      <div className="container py-8 md:py-12">
       <div className="max-w-4xl mx-auto space-y-10">
         <section className="text-center mb-6">
           <h1 className="text-2xl md:text-3xl font-semibold">The Forum</h1>
@@ -288,6 +340,7 @@ export default function Forum() {
         </section>
       </div>
     </div>
+  </>
   );
 }
 
