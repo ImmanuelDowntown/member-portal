@@ -29,36 +29,29 @@ export default function GroupCard({
       <div>
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-lg font-semibold text-accent">{title}</h3>
-          {isMember && (
-            <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-700 border border-emerald-200">
-              Member
-            </span>
+          {isMember ? (
+            <Link
+              to={`/groups/${group.id}`}
+              className="inline-flex items-center rounded-lg bg-slate-900 text-white px-3 py-1.5 text-sm hover:bg-slate-800"
+            >
+              View
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center rounded-lg bg-slate-200 text-slate-500 px-3 py-1.5 text-sm cursor-not-allowed"
+              title="Join this group to view"
+            >
+              View
+            </button>
           )}
         </div>
         {parent && <p className="text-xs text-text2 mt-1">{parent}</p>}
         {desc && <p className="text-sm text-text2 mt-3">{desc}</p>}
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
-        {isMember ? (
-          <Link
-            to={`/groups/${group.id}`}
-            className="inline-flex items-center rounded-lg bg-slate-900 text-white px-3 py-1.5 text-sm hover:bg-slate-800"
-          >
-            View
-          </Link>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center rounded-lg bg-slate-200 text-slate-500 px-3 py-1.5 text-sm cursor-not-allowed"
-            title="Join this group to view"
-          >
-            View
-          </button>
-        )}
-        {footer}
-      </div>
+      {footer && <div className="mt-4 flex items-center gap-2">{footer}</div>}
     </div>
   );
 }
