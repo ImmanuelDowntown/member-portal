@@ -75,8 +75,8 @@ export default function Forum() {
   return (
     <div className="container py-8 md:py-12">
       <div className="max-w-4xl mx-auto space-y-10">
-        <section className="border border-border p-5 rounded-xl">
-          <h1 className="text-2xl font-semibold text-accent">The Forum</h1>
+        <section className="text-center mb-6">
+          <h1 className="text-2xl md:text-3xl font-semibold">The Forum</h1>
           <p className="text-text2 mt-2">Connect with others and explore resources.</p>
         </section>
 

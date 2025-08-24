@@ -91,7 +91,12 @@ export default function ForumThread() {
             <p className="text-text2">No posts yet.</p>
           ) : (
             posts.map((p) => (
-              <ForumPost key={p.id} threadId={id!} post={p} />
+              <ForumPost
+                key={p.id}
+                threadId={id!}
+                docPath={`forumThreads/${id}/posts/${p.id}`}
+                post={p}
+              />
             ))
           )}
           {user && (

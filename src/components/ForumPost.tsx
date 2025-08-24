@@ -16,77 +16,92 @@ export type Post = {
   content: string;
 };
 
-interface Reply {
-  id: string;
-  author: string;
-  content: string;
-}
-
 interface ForumPostProps {
   threadId: string;
   post: Post;
+  docPath: string;
+  depth?: number;
 }
 
-export default function ForumPost({ threadId, post }: ForumPostProps) {
+const MAX_DEPTH = 5;
+
+export default function ForumPost({
+  threadId,
+  post,
+  docPath,
+  depth = 0,
+}: ForumPostProps) {
   const { user } = useAuth();
-  const [replies, setReplies] = useState<Reply[] | null>(null);
+  const [replies, setReplies] = useState<Post[] | null>(null);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [newReply, setNewReply] = useState("");
 
   useEffect(() => {
     const q = query(
-      collection(db, "forumThreads", threadId, "posts", post.id, "replies"),
+      collection(db, docPath, "replies"),
       orderBy("createdAt", "asc")
     );
     const unsub = onSnapshot(q, (snap) => {
-      const list: Reply[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const list: Post[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
       setReplies(list);
     });
     return () => unsub();
-  }, [threadId, post.id]);
+  }, [docPath]);
 
   const createReply = async (e: FormEvent) => {
     e.preventDefault();
     const content = newReply.trim();
     if (!content || !user) return;
-    await addDoc(
-      collection(db, "forumThreads", threadId, "posts", post.id, "replies"),
-      {
-        author: user.displayName || user.email || "Anonymous",
-        content,
-        createdAt: serverTimestamp(),
-      }
-    );
+    await addDoc(collection(db, docPath, "replies"), {
+      author: user.displayName || user.email || "Anonymous",
+      content,
+      createdAt: serverTimestamp(),
+    });
     setNewReply("");
     setShowReplyForm(false);
   };
 
+  const containerClass =
+    depth === 0
+      ? "rounded-lg border border-border bg-muted p-3"
+      : "rounded-md border border-border bg-background p-2";
+
   return (
-    <div className="rounded-lg border border-border bg-muted p-3">
-      <p className="font-medium text-accent">{post.author}</p>
-      <p className="text-text2 mt-1 whitespace-pre-line">{post.content}</p>
-      <button
-        onClick={() => setShowReplyForm((prev) => !prev)}
-        className="mt-2 text-sm text-accent hover:underline"
+    <div className={containerClass}>
+      <p className={depth === 0 ? "font-medium text-accent" : "text-sm font-medium text-accent"}>
+        {post.author}
+      </p>
+      <p
+        className={
+          depth === 0
+            ? "text-text2 mt-1 whitespace-pre-line"
+            : "text-sm text-text2 mt-1 whitespace-pre-line"
+        }
       >
-        Reply
-      </button>
+        {post.content}
+      </p>
+      {depth < MAX_DEPTH - 1 && (
+        <button
+          onClick={() => setShowReplyForm((prev) => !prev)}
+          className="mt-2 text-sm text-accent hover:underline"
+        >
+          Reply
+        </button>
+      )}
       {replies && replies.length > 0 && (
         <div className="mt-2 space-y-2 pl-4">
           {replies.map((r) => (
-            <div
+            <ForumPost
               key={r.id}
-              className="rounded-md border border-border bg-background p-2"
-            >
-              <p className="text-sm font-medium text-accent">{r.author}</p>
-              <p className="text-sm text-text2 mt-1 whitespace-pre-line">
-                {r.content}
-              </p>
-            </div>
+              threadId={threadId}
+              post={r}
+              docPath={`${docPath}/replies/${r.id}`}
+              depth={depth + 1}
+            />
           ))}
         </div>
       )}
-      {showReplyForm && user && (
+      {showReplyForm && user && depth < MAX_DEPTH - 1 && (
         <form onSubmit={createReply} className="mt-2 space-y-2 pl-4">
           <textarea
             value={newReply}
