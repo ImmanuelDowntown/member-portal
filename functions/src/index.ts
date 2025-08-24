@@ -12,6 +12,7 @@ export { onResourceCreated } from "./onResourceCreated";
 export { onDirectMessageCreate } from "./onDirectMessage";
 export { onDmDockMessageCreate } from "./onDmDockMessage";
 export { sendTestPush, registerPushToken } from "./notifications";
+export { onUserCreated } from "./onUserCreated";
 export { setUserDisabled, deleteUserAccount } from "./adminUsers";
 
 // ---- v1 callable kept for backward compatibility ----

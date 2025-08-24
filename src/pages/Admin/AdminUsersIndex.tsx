@@ -10,6 +10,9 @@ import {
   type DocumentData,
   serverTimestamp,
   deleteField,
+  query,
+  where,
+  updateDoc,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
@@ -22,6 +25,7 @@ type UserRow = {
   email?: string;
   status?: string; // active | inactive | deleted (if present on user doc)
   isCommunityApproved?: boolean;
+  reviewed?: boolean;
   groups: Array<{ id: string; name: string }>;
 };
 
@@ -74,6 +78,7 @@ export default function AdminUsersIndex() {
             email: (data?.email as string) || "",
             status: (data?.status as string) || "active",
             isCommunityApproved: Boolean(data?.isCommunityApproved),
+            reviewed: Boolean(data?.reviewed),
             groups: [],
           };
         });
@@ -196,6 +201,44 @@ export default function AdminUsersIndex() {
     }
   }
 
+  async function handleMarkReviewed(uid: string) {
+    if (!isSuper) return;
+    setBusy(`review:${uid}`);
+    try {
+      await setDoc(
+        doc(db, "users", uid),
+        { reviewed: true, needsReview: false },
+        { merge: true }
+      );
+      // mark related notifications as read for this admin
+      const adminUid = auth.currentUser?.uid;
+      if (adminUid) {
+        try {
+          const qs = await getDocs(
+            query(
+              collection(db, `users/${adminUid}/notifications`),
+              where("type", "==", "new-user"),
+              where("uid", "==", uid)
+            )
+          );
+          for (const d of qs.docs) {
+            await updateDoc(d.ref, {
+              read: true,
+              readAt: serverTimestamp(),
+            }).catch(() => {});
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, reviewed: true } : u)));
+    } catch (e) {
+      alert("Failed to mark reviewed.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto p-6">
@@ -274,6 +317,17 @@ export default function AdminUsersIndex() {
                     >
                       View
                     </Link>
+
+                    {!u.reviewed && (
+                      <button
+                        onClick={() => handleMarkReviewed(u.uid)}
+                        disabled={!isSuper || !!busy}
+                        className="text-xs rounded-lg px-2 py-1 bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                        style={{ opacity: busy ? 0.6 : 1 }}
+                      >
+                        {busy === `review:${u.uid}` ? "Saving…" : "Mark reviewed"}
+                      </button>
+                    )}
 
                     {isSuper && (
                       <div className="flex flex-wrap gap-1 justify-end">

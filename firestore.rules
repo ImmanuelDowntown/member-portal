@@ -182,6 +182,28 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Forum ----------
+    match /forumThreads/{threadId} {
+      // Anyone signed-in may read threads
+      allow get, list: if isSignedIn();
+
+      // Only the creator or a super admin may modify a thread
+      allow create: if isSignedIn() && request.resource.data.creator == uid();
+      allow update, delete: if isSignedIn() &&
+        (resource.data.creator == uid() || isSuperAdmin());
+
+      // Posts within a thread
+      match /posts/{postId} {
+        // Signed-in users can read and create posts
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn();
+
+        // Only super admins may remove posts; edits are disallowed
+        allow update: if false;
+        allow delete: if isSuperAdmin();
+      }
+    }
+
     // ---------- Sunday resources ----------
     match /sundayResources/{resourceId} {
       // All signed-in users may view Sunday resources

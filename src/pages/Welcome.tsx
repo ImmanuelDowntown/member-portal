@@ -117,6 +117,8 @@ export default function Welcome() {
           campusName: CAMPUSES.find(c => c.id === campus)?.name || null,
           updatedAt: serverTimestamp(),
           onboardedAt: serverTimestamp(),
+          reviewed: false,
+          needsReview: true,
         },
         { merge: true }
       );
