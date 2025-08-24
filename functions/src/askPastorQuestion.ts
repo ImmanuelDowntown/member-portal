@@ -7,7 +7,7 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const PASTOR_UID = functions.config().pastor?.uid as string;
+const PASTOR_UID = functions.config().pastor?.uid as string | undefined;
 
 export const askPastorQuestion = https.onCall({ region: "us-central1" }, async (request) => {
   const uid = request.auth?.uid;
@@ -19,7 +19,14 @@ export const askPastorQuestion = https.onCall({ region: "us-central1" }, async (
     throw new https.HttpsError("invalid-argument", "text is required");
   }
 
-  const pairId = [uid, PASTOR_UID].sort().join("_");
+  const pastorUid = PASTOR_UID;
+  if (!pastorUid) {
+    throw new https.HttpsError(
+      "failed-precondition",
+      "Pastor UID not configured"
+    );
+  }
+  const pairId = [uid, pastorUid].sort().join("_");
 
   let displayName = "Member";
   try {
@@ -35,7 +42,7 @@ export const askPastorQuestion = https.onCall({ region: "us-central1" }, async (
 
   await db.doc(`dmThreads/${pairId}`).set(
     {
-      users: [uid, PASTOR_UID].sort(),
+      users: [uid, pastorUid].sort(),
       userNames: { [uid]: displayName },
     },
     { merge: true }
@@ -44,7 +51,7 @@ export const askPastorQuestion = https.onCall({ region: "us-central1" }, async (
   await db.collection(`dmMessages/${pairId}/messages`).add({
     text,
     from: uid,
-    to: PASTOR_UID,
+    to: pastorUid,
     displayName,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
