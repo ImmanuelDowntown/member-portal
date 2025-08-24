@@ -3,6 +3,6 @@ import { app } from "@/lib/firebase";
 
 const fn = httpsCallable(getFunctions(app, "us-central1"), "askPastorQuestion");
 
-export async function askPastorQuestion(text: string): Promise<void> {
+export async function askPastorQuestion(text: string) {
   await fn({ text });
 }
