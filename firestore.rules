@@ -201,6 +201,16 @@ service cloud.firestore {
         // Only super admins may remove posts; edits are disallowed
         allow update: if false;
         allow delete: if isSuperAdmin();
+
+        match /replies/{replyId} {
+          // Signed-in users can read and create replies
+          allow get, list: if isSignedIn();
+          allow create: if isSignedIn();
+
+          // Only super admins may remove replies; edits are disallowed
+          allow update: if false;
+          allow delete: if isSuperAdmin();
+        }
       }
     }
 

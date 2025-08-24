@@ -11,12 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
-
-type Post = {
-  id: string;
-  author: string;
-  content: string;
-};
+import ForumPost, { Post } from "@/components/ForumPost";
 
 export default function ForumThread() {
   const { id } = useParams<{ id: string }>();
@@ -96,10 +91,7 @@ export default function ForumThread() {
             <p className="text-text2">No posts yet.</p>
           ) : (
             posts.map((p) => (
-              <div key={p.id} className="rounded-lg border border-border bg-muted p-3">
-                <p className="font-medium text-accent">{p.author}</p>
-                <p className="text-text2 mt-1 whitespace-pre-line">{p.content}</p>
-              </div>
+              <ForumPost key={p.id} threadId={id!} post={p} />
             ))
           )}
           {user && (
