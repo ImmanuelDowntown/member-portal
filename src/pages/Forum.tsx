@@ -130,7 +130,7 @@ export default function Forum() {
         </section>
 
         <section className="border border-border p-5 rounded-xl">
-          <h2 className="text-xl font-semibold text-accent">Discussion Forum</h2>
+          <h2 className="text-xl font-semibold text-accent">Discussion Board</h2>
           {threads === null ? (
             <p className="text-text2 mt-2">Loading…</p>
           ) : threads.length === 0 ? (

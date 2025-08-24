@@ -98,7 +98,7 @@ export default function ForumPost({ threadId, post }: ForumPostProps) {
               />
               <button
                 type="submit"
-                className="rounded-md bg-accent px-3 py-1 text-sm text-white"
+                className="rounded-md bg-accent px-3 py-1 text-sm text-bg"
               >
                 Post Reply
               </button>
