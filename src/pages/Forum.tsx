@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
+import { askPastorQuestion } from "@/lib/askPastorQuestion";
 
 type ResourceDoc = {
   id: string;
@@ -121,6 +122,19 @@ export default function Forum() {
     await deleteDoc(doc(db, "forumResources", id));
   };
 
+  const handleAskQuestion = async () => {
+    const text = window.prompt("Send a question to the pastor:")?.trim();
+    if (!text) return;
+    try {
+      await askPastorQuestion(text);
+      // eslint-disable-next-line no-alert
+      alert("Question sent.");
+    } catch {
+      // eslint-disable-next-line no-alert
+      alert("Could not send question.");
+    }
+  };
+
   return (
     <div className="container py-8 md:py-12">
       <div className="max-w-4xl mx-auto space-y-10">
@@ -128,6 +142,15 @@ export default function Forum() {
           <h1 className="text-2xl md:text-3xl font-semibold">The Forum</h1>
           <p className="text-text2 mt-2">Connect with others and explore resources.</p>
         </section>
+
+        <div className="text-right">
+          <button
+            onClick={handleAskQuestion}
+            className="mb-4 rounded-md bg-accent px-4 py-2 text-slate-900"
+          >
+            Ask a Question
+          </button>
+        </div>
 
         <section className="border border-border p-5 rounded-xl">
           <h2 className="text-xl font-semibold text-accent">Discussion Board</h2>

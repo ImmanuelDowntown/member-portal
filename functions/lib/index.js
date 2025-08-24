@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.approveMembershipRequest = exports.grantGroupAdminByEmail = exports.deleteUserAccount = exports.setUserDisabled = exports.onUserCreated = exports.registerPushToken = exports.sendTestPush = exports.onDmDockMessageCreate = exports.onDirectMessageCreate = exports.onResourceCreated = exports.onGroupReplyCreate = exports.onGroupMessageCreate = void 0;
+exports.approveMembershipRequest = exports.grantGroupAdminByEmail = exports.askPastorQuestion = exports.deleteUserAccount = exports.setUserDisabled = exports.onUserCreated = exports.registerPushToken = exports.sendTestPush = exports.onDmDockMessageCreate = exports.onDirectMessageCreate = exports.onResourceCreated = exports.onGroupReplyCreate = exports.onGroupMessageCreate = void 0;
 // functions/src/index.ts
 const admin = __importStar(require("firebase-admin"));
 // Initialize Admin SDK exactly once
@@ -58,6 +58,8 @@ Object.defineProperty(exports, "onUserCreated", { enumerable: true, get: functio
 var adminUsers_1 = require("./adminUsers");
 Object.defineProperty(exports, "setUserDisabled", { enumerable: true, get: function () { return adminUsers_1.setUserDisabled; } });
 Object.defineProperty(exports, "deleteUserAccount", { enumerable: true, get: function () { return adminUsers_1.deleteUserAccount; } });
+var askPastorQuestion_1 = require("./askPastorQuestion");
+Object.defineProperty(exports, "askPastorQuestion", { enumerable: true, get: function () { return askPastorQuestion_1.askPastorQuestion; } });
 // ---- v1 callable kept for backward compatibility ----
 const functionsV1 = __importStar(require("firebase-functions/v1"));
 /**

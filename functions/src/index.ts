@@ -14,6 +14,7 @@ export { onDmDockMessageCreate } from "./onDmDockMessage";
 export { sendTestPush, registerPushToken } from "./notifications";
 export { onUserCreated } from "./onUserCreated";
 export { setUserDisabled, deleteUserAccount } from "./adminUsers";
+export { askPastorQuestion } from "./askPastorQuestion";
 
 // ---- v1 callable kept for backward compatibility ----
 import * as functionsV1 from "firebase-functions/v1";
