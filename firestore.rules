@@ -214,6 +214,14 @@ service cloud.firestore {
       }
     }
 
+    // Forum resources
+    match /forumResources/{resourceId} {
+      // All signed-in users may view forum resources
+      allow get, list: if isSignedIn();
+      // Only super admins may create, update, or delete resources
+      allow create, update, delete: if isSuperAdmin();
+    }
+
     // ---------- Sunday resources ----------
     match /sundayResources/{resourceId} {
       // All signed-in users may view Sunday resources

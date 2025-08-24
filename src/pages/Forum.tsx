@@ -7,16 +7,13 @@ import {
   query,
   addDoc,
   serverTimestamp,
+  doc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 
-const recommended = [
-  { title: "Sample Book", url: "https://example.com/book" },
-  { title: "Helpful Video", url: "https://youtu.be/dQw4w9WgXcQ" },
-];
-
-type SRDoc = {
+type ResourceDoc = {
   id: string;
   title: string;
   url: string;
@@ -30,15 +27,20 @@ type Thread = {
 
 export default function Forum() {
   const { user } = useAuth();
-  const [papers, setPapers] = useState<SRDoc[] | null>(null);
+  const [papers, setPapers] = useState<ResourceDoc[] | null>(null);
+  const [resources, setResources] = useState<ResourceDoc[] | null>(null);
   const [threads, setThreads] = useState<Thread[] | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newBody, setNewBody] = useState("");
+  const [isSuper, setIsSuper] = useState<boolean | null>(null);
+  const [resTitle, setResTitle] = useState("");
+  const [resUrl, setResUrl] = useState("");
+  const [resNote, setResNote] = useState("");
 
   useEffect(() => {
     const q = query(collection(db, "sundayResources"), orderBy("createdAt", "asc"));
     const unsub = onSnapshot(q, (snap) => {
-      const list: SRDoc[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const list: ResourceDoc[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
       setPapers(list);
     });
     return () => unsub();
@@ -52,6 +54,28 @@ export default function Forum() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, "forumResources"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const list: ResourceDoc[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      setResources(list);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    if (user?.uid) {
+      const d = doc(db, "admins", user.uid);
+      unsub = onSnapshot(d, (snap) => setIsSuper(snap.exists()));
+    } else {
+      setIsSuper(false);
+    }
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [user?.uid]);
 
   const createThread = async (e: FormEvent) => {
     e.preventDefault();
@@ -70,6 +94,30 @@ export default function Forum() {
     });
     setNewTitle("");
     setNewBody("");
+  };
+
+  const addResource = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!isSuper) return;
+    const title = resTitle.trim();
+    const url = resUrl.trim();
+    const note = resNote.trim();
+    if (!title || !url) return;
+    await addDoc(collection(db, "forumResources"), {
+      title,
+      url,
+      note: note || null,
+      createdAt: serverTimestamp(),
+      createdBy: user?.uid ?? null,
+    });
+    setResTitle("");
+    setResUrl("");
+    setResNote("");
+  };
+
+  const removeResource = async (id: string) => {
+    if (!isSuper) return;
+    await deleteDoc(doc(db, "forumResources", id));
   };
 
   return (
@@ -118,7 +166,7 @@ export default function Forum() {
               />
               <button
                 type="submit"
-                className="rounded-md bg-accent px-4 py-2 text-white"
+                className="rounded-md bg-accent px-4 py-2 text-slate-900"
               >
                 Create Thread
               </button>
@@ -153,20 +201,66 @@ export default function Forum() {
 
         <section className="border border-border p-5 rounded-xl">
           <h2 className="text-xl font-semibold text-accent">Recommended Resources</h2>
-          <ul className="mt-4 space-y-2">
-            {recommended.map((r, idx) => (
-              <li key={idx}>
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent hover:underline"
-                >
-                  {r.title}
-                </a>
-              </li>
-            ))}
-          </ul>
+          {resources === null ? (
+            <p className="text-text2 mt-2">Loading…</p>
+          ) : resources.length === 0 ? (
+            <p className="text-text2 mt-2">No resources yet.</p>
+          ) : (
+            <ul className="mt-4 space-y-2">
+              {resources.map((r) => (
+                <li key={r.id} className="rounded-lg border border-border bg-muted p-3">
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-accent hover:underline"
+                  >
+                    {r.title}
+                  </a>
+                  {r.note && <p className="text-sm text-text2 mt-1">{r.note}</p>}
+                  {isSuper && (
+                    <button
+                      onClick={() => removeResource(r.id)}
+                      className="ml-2 text-xs text-red-500 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {isSuper && (
+            <form onSubmit={addResource} className="mt-4 space-y-2">
+              <input
+                type="text"
+                value={resTitle}
+                onChange={(e) => setResTitle(e.target.value)}
+                placeholder="Title"
+                className="w-full rounded-md border border-border bg-background p-2"
+              />
+              <input
+                type="url"
+                value={resUrl}
+                onChange={(e) => setResUrl(e.target.value)}
+                placeholder="URL"
+                className="w-full rounded-md border border-border bg-background p-2"
+              />
+              <input
+                type="text"
+                value={resNote}
+                onChange={(e) => setResNote(e.target.value)}
+                placeholder="Note (optional)"
+                className="w-full rounded-md border border-border bg-background p-2"
+              />
+              <button
+                type="submit"
+                className="rounded-md bg-slate-900 px-4 py-2 text-white"
+              >
+                Add resource
+              </button>
+            </form>
+          )}
         </section>
       </div>
     </div>
