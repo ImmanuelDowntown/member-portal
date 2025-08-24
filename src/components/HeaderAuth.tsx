@@ -28,6 +28,8 @@ function useStandalone() {
 export default function HeaderAuth(){
   const { user, isAdmin } = useAuth();
   const loc = useLocation();
+  const pastorUid = import.meta.env.VITE_PASTOR_UID as string | undefined;
+  const isPastor = user?.uid === pastorUid;
   const [greetingName, setGreetingName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
   const isStandalone = useStandalone();
@@ -103,6 +105,7 @@ export default function HeaderAuth(){
             <NavLink to="/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
             <NavLink to="/forum" className={({isActive}) => navItemClass(isActive)}>The Forum</NavLink>
             <NavLink to="/groups" className={({isActive}) => navItemClass(isActive)}>Groups</NavLink>
+            {isPastor && <NavLink to="/pastor/questions" className={({isActive}) => navItemClass(isActive)}>Questions</NavLink>}
             {isAdmin && <NavLink to="/admin" className={({isActive}) => navItemClass(isActive)}>Admin</NavLink>}
           </nav>
 
@@ -145,6 +148,7 @@ export default function HeaderAuth(){
                 {user ? (
                   <>
                     <Link to="/profile" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Profile</Link>
+                    {isPastor && <Link to="/pastor/questions" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Questions</Link>}
                     {isAdmin && <Link to="/admin" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Admin</Link>}
                     <button className="btn btn-outline btn-sm" onClick={() => { setMenuOpen(false); signOut(auth); }}>Sign out</button>
                   </>
