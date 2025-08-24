@@ -136,14 +136,29 @@ export default function Forum() {
   const submitQuestion = async (e: FormEvent) => {
     e.preventDefault();
     const text = questionText.trim();
-    if (!text) return;
+    if (!text) {
+      setQuestionMessage("Question cannot be empty");
+      setQuestionError(true);
+      return;
+    }
+    if (!user) {
+      setQuestionMessage("Sign in required");
+      setQuestionError(true);
+      return;
+    }
     try {
       await askPastorQuestion(text);
       setQuestionMessage("Question sent.");
       setQuestionError(false);
       setQuestionText("");
-    } catch {
-      setQuestionMessage("Could not send question.");
+    } catch (err: any) {
+      let msg = "Could not send question.";
+      if (err?.code === "unauthenticated") {
+        msg = "Sign in required";
+      } else if (err?.code === "invalid-argument") {
+        msg = "Question cannot be empty";
+      }
+      setQuestionMessage(msg);
       setQuestionError(true);
     }
   };
