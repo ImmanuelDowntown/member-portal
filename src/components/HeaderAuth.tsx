@@ -101,7 +101,7 @@ export default function HeaderAuth(){
           {/* Nav */}
           <nav className="col-span-2 row-start-2 md:row-start-1 md:col-span-1 flex justify-center gap-4 text-sm">
             <NavLink to="/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
-            <NavLink to="/sunday-resources" className={({isActive}) => navItemClass(isActive)}>Sunday White Papers</NavLink>
+            <NavLink to="/forum" className={({isActive}) => navItemClass(isActive)}>The Forum</NavLink>
             <NavLink to="/groups" className={({isActive}) => navItemClass(isActive)}>Groups</NavLink>
             {isAdmin && <NavLink to="/admin" className={({isActive}) => navItemClass(isActive)}>Admin</NavLink>}
           </nav>
