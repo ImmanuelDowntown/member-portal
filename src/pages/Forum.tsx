@@ -75,12 +75,12 @@ export default function Forum() {
   return (
     <div className="container py-8 md:py-12">
       <div className="max-w-4xl mx-auto space-y-10">
-        <section>
+        <section className="border border-border p-5 rounded-xl">
           <h1 className="text-2xl font-semibold text-accent">The Forum</h1>
           <p className="text-text2 mt-2">Connect with others and explore resources.</p>
         </section>
 
-        <section>
+        <section className="border border-border p-5 rounded-xl">
           <h2 className="text-xl font-semibold text-accent">Discussion Forum</h2>
           {threads === null ? (
             <p className="text-text2 mt-2">Loading…</p>
@@ -126,7 +126,7 @@ export default function Forum() {
           )}
         </section>
 
-        <section>
+        <section className="border border-border p-5 rounded-xl">
           <h2 className="text-xl font-semibold text-accent">Sunday White Papers</h2>
           {papers === null ? (
             <p className="text-text2 mt-2">Loading…</p>
@@ -151,7 +151,7 @@ export default function Forum() {
           )}
         </section>
 
-        <section>
+        <section className="border border-border p-5 rounded-xl">
           <h2 className="text-xl font-semibold text-accent">Recommended Resources</h2>
           <ul className="mt-4 space-y-2">
             {recommended.map((r, idx) => (
