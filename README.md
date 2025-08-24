@@ -12,5 +12,11 @@ firebase use --add
 npm run build
 firebase deploy --only hosting
 
+## Deploy (Cloud Functions)
+# set the UID of the pastor account before deploying
+firebase functions:config:set pastor.uid="YOUR_PASTOR_UID"
+npm run build:functions
+firebase deploy --only functions
+
 ## Admin claim
 Use Admin SDK to set { admin: true } for an admin user, then reauth.

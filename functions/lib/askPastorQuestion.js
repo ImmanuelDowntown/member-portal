@@ -34,21 +34,22 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.askPastorQuestion = void 0;
-const functions = __importStar(require("firebase-functions/v2/https"));
+const https = __importStar(require("firebase-functions/v2/https"));
+const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 if (!admin.apps.length) {
     admin.initializeApp();
 }
 const db = admin.firestore();
-const PASTOR_UID = "N86oGmSc8oVnHHeHm2Nlxi2L8Wb2";
-exports.askPastorQuestion = functions.onCall({ region: "us-central1" }, async (request) => {
+const PASTOR_UID = functions.config().pastor?.uid;
+exports.askPastorQuestion = https.onCall({ region: "us-central1" }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
-        throw new functions.HttpsError("unauthenticated", "Sign in required.");
+        throw new https.HttpsError("unauthenticated", "Sign in required.");
     }
     const text = String(request.data?.text || "").trim();
     if (!text) {
-        throw new functions.HttpsError("invalid-argument", "text is required");
+        throw new https.HttpsError("invalid-argument", "text is required");
     }
     const pairId = [uid, PASTOR_UID].sort().join("_");
     let displayName = "Member";
@@ -65,7 +66,7 @@ exports.askPastorQuestion = functions.onCall({ region: "us-central1" }, async (r
     }
     await db.doc(`dmThreads/${pairId}`).set({
         users: [uid, PASTOR_UID].sort(),
-        [`userNames.${uid}`]: displayName,
+        userNames: { [uid]: displayName },
     }, { merge: true });
     await db.collection(`dmMessages/${pairId}/messages`).add({
         text,

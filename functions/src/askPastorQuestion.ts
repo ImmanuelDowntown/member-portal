@@ -1,4 +1,5 @@
-import * as functions from "firebase-functions/v2/https";
+import * as https from "firebase-functions/v2/https";
+import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
 if (!admin.apps.length) {
@@ -6,16 +7,16 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const PASTOR_UID = "N86oGmSc8oVnHHeHm2Nlxi2L8Wb2";
+const PASTOR_UID = functions.config().pastor?.uid as string;
 
-export const askPastorQuestion = functions.onCall({ region: "us-central1" }, async (request) => {
+export const askPastorQuestion = https.onCall({ region: "us-central1" }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
-    throw new functions.HttpsError("unauthenticated", "Sign in required.");
+    throw new https.HttpsError("unauthenticated", "Sign in required.");
   }
   const text = String(request.data?.text || "").trim();
   if (!text) {
-    throw new functions.HttpsError("invalid-argument", "text is required");
+    throw new https.HttpsError("invalid-argument", "text is required");
   }
 
   const pairId = [uid, PASTOR_UID].sort().join("_");
