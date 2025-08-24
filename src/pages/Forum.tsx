@@ -33,6 +33,7 @@ export default function Forum() {
   const [papers, setPapers] = useState<SRDoc[] | null>(null);
   const [threads, setThreads] = useState<Thread[] | null>(null);
   const [newTitle, setNewTitle] = useState("");
+  const [newBody, setNewBody] = useState("");
 
   useEffect(() => {
     const q = query(collection(db, "sundayResources"), orderBy("createdAt", "asc"));
@@ -55,13 +56,20 @@ export default function Forum() {
   const createThread = async (e: FormEvent) => {
     e.preventDefault();
     const title = newTitle.trim();
-    if (!title || !user) return;
-    await addDoc(collection(db, "forumThreads"), {
+    const body = newBody.trim();
+    if (!title || !body || !user) return;
+    const threadDoc = await addDoc(collection(db, "forumThreads"), {
       title,
       createdAt: serverTimestamp(),
       creator: user.uid,
     });
+    await addDoc(collection(db, "forumThreads", threadDoc.id, "posts"), {
+      author: user.displayName || user.email || "Anonymous",
+      content: body,
+      createdAt: serverTimestamp(),
+    });
     setNewTitle("");
+    setNewBody("");
   };
 
   return (
@@ -100,6 +108,13 @@ export default function Forum() {
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="New thread title"
                 className="w-full rounded-md border border-border bg-background p-2"
+              />
+              <textarea
+                value={newBody}
+                onChange={(e) => setNewBody(e.target.value)}
+                placeholder="Thread message"
+                className="w-full rounded-md border border-border bg-background p-2"
+                rows={4}
               />
               <button
                 type="submit"
