@@ -1,24 +1,19 @@
 import { Link, useParams } from "react-router-dom";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   doc,
   onSnapshot,
   collection,
   query,
   orderBy,
-  addDoc,
-  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useAuth } from "@/contexts/AuthContext";
 import ForumPost, { Post } from "@/components/ForumPost";
 
 export default function ForumThread() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
   const [threadTitle, setThreadTitle] = useState<string | null | undefined>(undefined);
   const [posts, setPosts] = useState<Post[] | null>(null);
-  const [newPost, setNewPost] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -42,18 +37,6 @@ export default function ForumThread() {
       unsubPosts();
     };
   }, [id]);
-
-  const createPost = async (e: FormEvent) => {
-    e.preventDefault();
-    const content = newPost.trim();
-    if (!content || !id || !user) return;
-    await addDoc(collection(db, "forumThreads", id, "posts"), {
-      author: user.displayName || user.email || "Anonymous",
-      content,
-      createdAt: serverTimestamp(),
-    });
-    setNewPost("");
-  };
 
   if (threadTitle === undefined) {
     return (
@@ -93,23 +76,6 @@ export default function ForumThread() {
             posts.map((p) => (
               <ForumPost key={p.id} threadId={id!} post={p} />
             ))
-          )}
-          {user && (
-            <form onSubmit={createPost} className="mt-4 space-y-2">
-              <textarea
-                value={newPost}
-                onChange={(e) => setNewPost(e.target.value)}
-                placeholder="Write a reply..."
-                className="w-full rounded-md border border-border bg-background p-2"
-                rows={4}
-              />
-              <button
-                type="submit"
-                className="rounded-md bg-accent px-4 py-2 text-white"
-              >
-                Post Reply
-              </button>
-            </form>
           )}
         </section>
       </div>
