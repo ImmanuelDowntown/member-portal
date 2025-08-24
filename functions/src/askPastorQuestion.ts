@@ -35,7 +35,7 @@ export const askPastorQuestion = functions.onCall({ region: "us-central1" }, asy
   await db.doc(`dmThreads/${pairId}`).set(
     {
       users: [uid, PASTOR_UID].sort(),
-      [`userNames.${uid}`]: displayName,
+      userNames: { [uid]: displayName },
     },
     { merge: true }
   );
