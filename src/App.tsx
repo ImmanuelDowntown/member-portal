@@ -27,6 +27,8 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import Welcome from "@/pages/Welcome";
 import SundayResources from "@/pages/SundayResources";
+import Forum from "@/pages/Forum";
+import ForumThread from "@/pages/ForumThread";
 
 
 // Admin Pages
@@ -84,6 +86,8 @@ export default function App() {
             <Route path="/events" element={<AuthRoute><OnboardRoute><Events /></OnboardRoute></AuthRoute>} />
             <Route path="/profile" element={<AuthRoute><OnboardRoute><Profile /></OnboardRoute></AuthRoute>} />
             <Route path="/settings" element={<AuthRoute><OnboardRoute><Settings /></OnboardRoute></AuthRoute>} />
+            <Route path="/forum" element={<AuthRoute><OnboardRoute><Forum /></OnboardRoute></AuthRoute>} />
+            <Route path="/forum/thread/:id" element={<AuthRoute><OnboardRoute><ForumThread /></OnboardRoute></AuthRoute>} />
             <Route path="/sunday-resources" element={<AuthRoute><OnboardRoute><SundayResources /></OnboardRoute></AuthRoute>} />
 
             {/* Groups Explore + Detail */}
