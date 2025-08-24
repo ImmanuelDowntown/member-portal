@@ -1,7 +1,6 @@
 import { Link, useParams } from "react-router-dom";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
-  getFirestore,
   doc,
   onSnapshot,
   collection,
@@ -10,7 +9,7 @@ import {
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 
 type Post = {
@@ -21,7 +20,6 @@ type Post = {
 
 export default function ForumThread() {
   const { id } = useParams<{ id: string }>();
-  const db = useMemo(() => getFirestore(app), []);
   const { user } = useAuth();
   const [threadTitle, setThreadTitle] = useState<string | null | undefined>(undefined);
   const [posts, setPosts] = useState<Post[] | null>(null);
@@ -48,14 +46,14 @@ export default function ForumThread() {
       unsubThread();
       unsubPosts();
     };
-  }, [db, id]);
+  }, [id]);
 
   const createPost = async (e: FormEvent) => {
     e.preventDefault();
     const content = newPost.trim();
-    if (!content || !id) return;
+    if (!content || !id || !user) return;
     await addDoc(collection(db, "forumThreads", id, "posts"), {
-      author: user?.displayName || user?.email || "Anonymous",
+      author: user.displayName || user.email || "Anonymous",
       content,
       createdAt: serverTimestamp(),
     });

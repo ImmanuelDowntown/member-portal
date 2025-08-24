@@ -80,7 +80,6 @@ export default function App() {
             {/* Protected app routes gated by onboarding completion */}
             <Route path="/dashboard" element={<AuthRoute><OnboardRoute><Dashboard /></OnboardRoute></AuthRoute>} />
             <Route path="/groups" element={<AuthRoute><OnboardRoute><Groups /></OnboardRoute></AuthRoute>} />
-            <Route path="/forums" element={<AuthRoute><OnboardRoute><Forums /></OnboardRoute></AuthRoute>} />
             <Route path="/resources" element={<AuthRoute><OnboardRoute><Resources /></OnboardRoute></AuthRoute>} />
             <Route path="/events" element={<AuthRoute><OnboardRoute><Events /></OnboardRoute></AuthRoute>} />
             <Route path="/profile" element={<AuthRoute><OnboardRoute><Profile /></OnboardRoute></AuthRoute>} />

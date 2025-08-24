@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
-  getFirestore,
   collection,
   onSnapshot,
   orderBy,
@@ -9,7 +8,7 @@ import {
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 
 const recommended = [
@@ -30,7 +29,6 @@ type Thread = {
 };
 
 export default function Forum() {
-  const db = useMemo(() => getFirestore(app), []);
   const { user } = useAuth();
   const [papers, setPapers] = useState<SRDoc[] | null>(null);
   const [threads, setThreads] = useState<Thread[] | null>(null);
@@ -43,7 +41,7 @@ export default function Forum() {
       setPapers(list);
     });
     return () => unsub();
-  }, [db]);
+  }, []);
 
   useEffect(() => {
     const q = query(collection(db, "forumThreads"), orderBy("createdAt", "desc"));
@@ -52,16 +50,16 @@ export default function Forum() {
       setThreads(list);
     });
     return () => unsub();
-  }, [db]);
+  }, []);
 
   const createThread = async (e: FormEvent) => {
     e.preventDefault();
     const title = newTitle.trim();
-    if (!title) return;
+    if (!title || !user) return;
     await addDoc(collection(db, "forumThreads"), {
       title,
       createdAt: serverTimestamp(),
-      creator: user?.uid ?? null,
+      creator: user.uid,
     });
     setNewTitle("");
   };
