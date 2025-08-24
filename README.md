@@ -15,6 +15,7 @@ firebase deploy --only hosting
 ## Deploy (Cloud Functions)
 # set the UID of the pastor account before deploying
 firebase functions:config:set pastor.uid="YOUR_PASTOR_UID"
+# or export PASTOR_UID="YOUR_PASTOR_UID" when running the functions emulator
 npm run build:functions
 firebase deploy --only functions
 

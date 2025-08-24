@@ -41,7 +41,11 @@ if (!admin.apps.length) {
     admin.initializeApp();
 }
 const db = admin.firestore();
-const PASTOR_UID = functions.config().pastor?.uid;
+// Allow configuring the pastor UID either via `functions:config:set` or an
+// environment variable. Previously this relied solely on Functions config which
+// meant the callable would silently fail in local/emulator setups where the
+// config wasn't provided, resulting in no Firestore writes.
+const PASTOR_UID = (process.env.PASTOR_UID || functions.config().pastor?.uid);
 exports.askPastorQuestion = https.onCall({ region: "us-central1" }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
