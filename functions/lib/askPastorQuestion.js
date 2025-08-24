@@ -46,7 +46,11 @@ const db = admin.firestore();
 // meant the callable would silently fail in local/emulator setups where the
 // config wasn't provided, resulting in no Firestore writes.
 const PASTOR_UID = (process.env.PASTOR_UID || functions.config().pastor?.uid);
-exports.askPastorQuestion = https.onCall({ region: "us-central1", invoker: "public" }, async (request) => {
+exports.askPastorQuestion = https.onCall({
+    region: "us-central1",
+    invoker: "public",
+    cors: ["https://member-portal-virid.vercel.app", "http://localhost:5173"],
+}, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
         throw new https.HttpsError("unauthenticated", "Sign in required.");

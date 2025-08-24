@@ -18,7 +18,11 @@ const PASTOR_UID =
     | undefined;
 
 export const askPastorQuestion = https.onCall(
-  { region: "us-central1", invoker: "public" },
+  {
+    region: "us-central1",
+    invoker: "public",
+    cors: ["https://member-portal-virid.vercel.app", "http://localhost:5173"],
+  },
   async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
