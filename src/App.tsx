@@ -18,7 +18,6 @@ import Login from "@/pages/Login";
 import SignUp from "@/pages/SignUp";
 import Dashboard from "@/pages/Dashboard";
 import Groups from "@/pages/Groups";
-import Forums from "@/pages/Forums";
 import Resources from "@/pages/Resources";
 import Events from "@/pages/Events";
 import Profile from "@/pages/Profile";
