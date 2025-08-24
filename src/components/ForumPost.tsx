@@ -1,5 +1,12 @@
-import { FormEvent, useState } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { FormEvent, useEffect, useState } from "react";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  deleteDoc,
+  doc,
+  onSnapshot,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -8,6 +15,7 @@ export type Post = {
   author: string;
   content: string;
   quote?: string;
+  uid?: string;
 };
 
 interface ForumPostProps {
@@ -19,6 +27,17 @@ export default function ForumPost({ threadId, post }: ForumPostProps) {
   const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [newReply, setNewReply] = useState("");
+  const [isSuper, setIsSuper] = useState(false);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setIsSuper(false);
+      return;
+    }
+    const d = doc(db, "admins", user.uid);
+    const unsub = onSnapshot(d, (snap) => setIsSuper(snap.exists()));
+    return () => unsub();
+  }, [user?.uid]);
 
   const createReply = async (e: FormEvent) => {
     e.preventDefault();
@@ -29,10 +48,16 @@ export default function ForumPost({ threadId, post }: ForumPostProps) {
       author: user.displayName || user.email || "Anonymous",
       content,
       quote,
+      uid: user.uid,
       createdAt: serverTimestamp(),
     });
     setNewReply("");
     setShowReplyForm(false);
+  };
+
+  const removePost = async () => {
+    if (!user) return;
+    await deleteDoc(doc(db, "forumThreads", threadId, "posts", post.id));
   };
 
   return (
@@ -46,12 +71,22 @@ export default function ForumPost({ threadId, post }: ForumPostProps) {
       <p className="text-text2 mt-1 whitespace-pre-line">{post.content}</p>
       {user && (
         <>
-          <button
-            onClick={() => setShowReplyForm((prev) => !prev)}
-            className="mt-2 text-sm text-accent hover:underline"
-          >
-            Reply
-          </button>
+          <div className="mt-2 flex items-center gap-4 text-sm">
+            <button
+              onClick={() => setShowReplyForm((prev) => !prev)}
+              className="text-accent hover:underline"
+            >
+              Reply
+            </button>
+            {(isSuper || user.uid === post.uid) && (
+              <button
+                onClick={removePost}
+                className="text-red-500 hover:underline"
+              >
+                Delete
+              </button>
+            )}
+          </div>
           {showReplyForm && (
             <form onSubmit={createReply} className="mt-2 space-y-2">
               <textarea

@@ -90,6 +90,7 @@ export default function Forum() {
     await addDoc(collection(db, "forumThreads", threadDoc.id, "posts"), {
       author: user.displayName || user.email || "Anonymous",
       content: body,
+      uid: user.uid,
       createdAt: serverTimestamp(),
     });
     setNewTitle("");

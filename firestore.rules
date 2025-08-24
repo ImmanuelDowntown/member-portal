@@ -198,18 +198,22 @@ service cloud.firestore {
         allow get, list: if isSignedIn();
         allow create: if isSignedIn();
 
-        // Only super admins may remove posts; edits are disallowed
+        // Posts cannot be edited once created
         allow update: if false;
-        allow delete: if isSuperAdmin();
+        // Authors may delete their own posts; super admins may delete any
+        allow delete: if isSignedIn() &&
+          (resource.data.uid == uid() || isSuperAdmin());
 
         match /replies/{replyId} {
           // Signed-in users can read and create replies
           allow get, list: if isSignedIn();
           allow create: if isSignedIn();
 
-          // Only super admins may remove replies; edits are disallowed
+          // Replies cannot be edited once created
           allow update: if false;
-          allow delete: if isSuperAdmin();
+          // Authors may delete their own replies; super admins may delete any
+          allow delete: if isSignedIn() &&
+            (resource.data.uid == uid() || isSuperAdmin());
         }
       }
     }
