@@ -110,7 +110,7 @@ exports.onGroupMessageCreate = functions.firestore.onDocumentCreated("groups/{gr
                 notification: {
                     title: `New message in ${groupName}`,
                     body,
-                },                
+                },
                 fcmOptions: {
                     link: url,
                 },
