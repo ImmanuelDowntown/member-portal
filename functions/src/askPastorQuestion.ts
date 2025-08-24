@@ -6,7 +6,7 @@ const db = admin.firestore();
 const PASTOR_UID = "N86oGmSc8oVnHHeHm2Nlxi2L8Wb2";
 
 export const askPastorQuestion = functions.onCall(
-  { region: "us-central1" },
+  { region: "us-central1", cors: true },
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {

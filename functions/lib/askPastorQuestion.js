@@ -40,7 +40,7 @@ if (!admin.apps.length)
     admin.initializeApp();
 const db = admin.firestore();
 const PASTOR_UID = "N86oGmSc8oVnHHeHm2Nlxi2L8Wb2";
-exports.askPastorQuestion = functions.onCall({ region: "us-central1" }, async (request) => {
+exports.askPastorQuestion = functions.onCall({ region: "us-central1", cors: true }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
         throw new functions.HttpsError("unauthenticated", "Sign in required.");
