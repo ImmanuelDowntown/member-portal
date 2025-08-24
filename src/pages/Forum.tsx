@@ -30,19 +30,19 @@ export default function Forum() {
   }, [db]);
 
   return (
-    <div className=\"container py-8 md:py-12\">
-      <div className=\"max-w-4xl mx-auto space-y-10\">
+    <div className="container py-8 md:py-12">
+      <div className="max-w-4xl mx-auto space-y-10">
         <section>
-          <h1 className=\"text-2xl font-semibold text-accent\">The Forum</h1>
-          <p className=\"text-text2 mt-2\">Connect with others and explore resources.</p>
+          <h1 className="text-2xl font-semibold text-accent">The Forum</h1>
+          <p className="text-text2 mt-2">Connect with others and explore resources.</p>
         </section>
 
         <section>
-          <h2 className=\"text-xl font-semibold text-accent\">Discussion Forum</h2>
-          <ul className=\"mt-4 space-y-2\">
+          <h2 className="text-xl font-semibold text-accent">Discussion Forum</h2>
+          <ul className="mt-4 space-y-2">
             {sampleThreads.map((t) => (
-              <li key={t.id} className=\"rounded-lg border border-border bg-muted p-3\">
-                <Link to={\`/forum/thread/\${t.id}\`} className=\"font-medium text-accent hover:underline\">
+              <li key={t.id} className="rounded-lg border border-border bg-muted p-3">
+                <Link to={`/forum/thread/${t.id}`} className="font-medium text-accent hover:underline">
                   {t.title}
                 </Link>
               </li>
@@ -51,24 +51,24 @@ export default function Forum() {
         </section>
 
         <section>
-          <h2 className=\"text-xl font-semibold text-accent\">Sunday White Papers</h2>
+          <h2 className="text-xl font-semibold text-accent">Sunday White Papers</h2>
           {papers === null ? (
-            <p className=\"text-text2 mt-2\">Loading…</p>
+            <p className="text-text2 mt-2">Loading…</p>
           ) : papers.length === 0 ? (
-            <p className=\"text-text2 mt-2\">No papers yet.</p>
+            <p className="text-text2 mt-2">No papers yet.</p>
           ) : (
-            <ul className=\"mt-4 space-y-2\">
+            <ul className="mt-4 space-y-2">
               {papers.map((p) => (
-                <li key={p.id} className=\"rounded-lg border border-border bg-muted p-3\">
+                <li key={p.id} className="rounded-lg border border-border bg-muted p-3">
                   <a
                     href={p.url}
-                    target=\"_blank\"
-                    rel=\"noopener noreferrer\"
-                    className=\"font-medium text-accent hover:underline\"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-accent hover:underline"
                   >
                     {p.title}
                   </a>
-                  {p.note && <p className=\"text-sm text-text2 mt-1\">{p.note}</p>}
+                  {p.note && <p className="text-sm text-text2 mt-1">{p.note}</p>}
                 </li>
               ))}
             </ul>
@@ -76,15 +76,15 @@ export default function Forum() {
         </section>
 
         <section>
-          <h2 className=\"text-xl font-semibold text-accent\">Recommended Resources</h2>
-          <ul className=\"mt-4 space-y-2\">
+          <h2 className="text-xl font-semibold text-accent">Recommended Resources</h2>
+          <ul className="mt-4 space-y-2">
             {recommended.map((r, idx) => (
               <li key={idx}>
                 <a
                   href={r.url}
-                  target=\"_blank\"
-                  rel=\"noopener noreferrer\"
-                  className=\"text-accent hover:underline\"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
                 >
                   {r.title}
                 </a>
@@ -96,3 +96,4 @@ export default function Forum() {
     </div>
   );
 }
+
