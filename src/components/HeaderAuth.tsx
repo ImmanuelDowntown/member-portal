@@ -88,7 +88,10 @@ export default function HeaderAuth(){
               className="absolute inset-0 bg-black/40"
               onClick={() => setMenuOpen(false)}
             />
-            <div className="absolute top-2 right-2 w-64 rounded-xl border border-border bg-[var(--bg)] shadow-xl p-3">
+            <div
+              className="absolute right-2 w-64 rounded-xl border border-border bg-[var(--bg)] shadow-xl p-3"
+              style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
+            >
               <div className="flex items-center justify-between">
                 <div className="text-sm text-text2">Menu</div>
                 <button
