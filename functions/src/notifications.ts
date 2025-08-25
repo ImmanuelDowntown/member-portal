@@ -59,7 +59,23 @@ export async function sendToUser(uid: string, payload: Record<string, unknown>):
   if (tokens.length === 0) return 0;
 
   const data = toStringMap(payload);
-  const res = await admin.messaging().sendEachForMulticast({ tokens, data });
+  const { title, body, icon, badge, url } = data;
+
+  const message: admin.messaging.MulticastMessage = { tokens, data };
+  if (title || body) {
+    message.notification = { title, body };
+  }
+  if (icon || badge || url) {
+    message.webpush = {
+      notification: {
+        icon: icon || undefined,
+        badge: badge || undefined,
+      },
+      fcmOptions: url ? { link: url } : undefined,
+    };
+  }
+
+  const res = await admin.messaging().sendEachForMulticast(message);
 
   let ok = 0;
   res.responses.forEach((r, idx) => {
