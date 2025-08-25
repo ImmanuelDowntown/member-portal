@@ -4,6 +4,7 @@
 
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
+import { sendToUser } from "./notifications";
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -22,17 +23,6 @@ type DmMessage = {
 function preview(text: string, max = 140): string {
   const t = text.replace(/\s+/g, " ").trim();
   return t.length > max ? t.slice(0, max - 1) + "…" : t;
-}
-
-async function getUserTokens(uid: string): Promise<string[]> {
-  const snap = await db.collection(`users/${uid}/pushTokens`).get();
-  const tokens: string[] = [];
-  snap.forEach((doc) => {
-    const data = doc.data() as { token?: string };
-    const tok = (data && data.token) || doc.id;
-    if (tok) tokens.push(tok);
-  });
-  return Array.from(new Set(tokens));
 }
 
 export const onDmDockMessageCreate = functions.firestore.onDocumentCreated(
@@ -58,58 +48,29 @@ export const onDmDockMessageCreate = functions.firestore.onDocumentCreated(
         return;
       }
 
-      const tokenLists = await Promise.all(recipients.map(getUserTokens));
-      const tokens = Array.from(new Set(tokenLists.flat().filter(Boolean)));
-      if (tokens.length === 0) {
-        console.log("onDmDockMessageCreate: recipients have no push tokens", {
-          pairId,
-          msgId,
-        });
-        return;
-      }
-
       const senderName = data.displayName || "New message";
       const body = data.text
         ? preview(data.text, 160)
         : "Tap to view the message.";
-      const url = "/dashboard";
-
-      const message: admin.messaging.MulticastMessage = {
-        notification: {
-          title: `Message from ${senderName}`,
-          body,
-        },
-        data: {
-          title: `Message from ${senderName}`,
-          body,
-          type: "dm-message",
-          pairId,
-          msgId,
-          fromUid: authorUid,
-          ...(data.groupId ? { groupId: data.groupId } : {}),
-        },
-        webpush: {
-          notification: {
-            title: `Message from ${senderName}`,
-            body,
-          },
-          fcmOptions: {
-            link: url,
-          },
-        },
-        tokens,
+      const payload: Record<string, unknown> = {
+        title: `Message from ${senderName}`,
+        body,
+        type: "dm-message",
+        pairId,
+        msgId,
+        fromUid: authorUid,
+        url: "/dashboard",
+        ...(data.groupId ? { groupId: data.groupId } : {}),
       };
-
-      const resp = await admin.messaging().sendEachForMulticast(message);
-      const delivered = resp.responses.filter((r) => r.success).length;
-      const failures = resp.responses.length - delivered;
+      let delivered = 0;
+      for (const uid of recipients) {
+        delivered += await sendToUser(uid, payload);
+      }
       console.log("onDmDockMessageCreate: pushed", {
         pairId,
         msgId,
         recipients: recipients.length,
-        tokens: tokens.length,
         delivered,
-        failures,
       });
     } catch (err) {
       console.error("onDmDockMessageCreate failed", err);

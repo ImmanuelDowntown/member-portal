@@ -39,6 +39,7 @@ exports.onDirectMessageCreate = void 0;
 // Path: groups/{groupId}/directMessages/{pairId}/messages/{msgId}
 const functions = __importStar(require("firebase-functions/v2"));
 const admin = __importStar(require("firebase-admin"));
+const notifications_1 = require("./notifications");
 if (!admin.apps.length) {
     admin.initializeApp();
 }
@@ -46,18 +47,6 @@ const db = admin.firestore();
 function preview(text, max = 140) {
     const t = text.replace(/\s+/g, " ").trim();
     return t.length > max ? t.slice(0, max - 1) + "…" : t;
-}
-async function getUserTokens(uid) {
-    const snap = await db.collection(`users/${uid}/pushTokens`).get();
-    const tokens = [];
-    snap.forEach((doc) => {
-        const data = doc.data();
-        // fallback to doc.id for older records
-        const tok = (data && data.token) || doc.id;
-        if (tok)
-            tokens.push(tok);
-    });
-    return Array.from(new Set(tokens));
 }
 exports.onDirectMessageCreate = functions.firestore.onDocumentCreated("groups/{groupId}/directMessages/{pairId}/messages/{msgId}", async (event) => {
     const { groupId, pairId, msgId } = event.params;
@@ -81,53 +70,28 @@ exports.onDirectMessageCreate = functions.firestore.onDocumentCreated("groups/{g
             console.log("onDirectMessageCreate: no recipients", { groupId, pairId, msgId });
             return;
         }
-        // Collect device tokens for all recipients
-        const tokenLists = await Promise.all(recipients.map(getUserTokens));
-        const tokens = Array.from(new Set(tokenLists.flat().filter(Boolean)));
-        if (tokens.length === 0) {
-            console.log("onDirectMessageCreate: recipients have no push tokens", { groupId, pairId, msgId });
-            return;
-        }
         const senderName = data.displayName || "New message";
         const body = data.text ? preview(data.text, 160) : "Tap to view the message.";
-        // Open the app; DM dock is global. If you want a deep link, we can add a route param later.
-        const url = "/dashboard";
-        const message = {
-            notification: {
-                title: `Message from ${senderName}`,
-                body,
-            },
-            data: {
-                title: `Message from ${senderName}`,
-                body,
-                type: "dm-message",
-                groupId,
-                pairId,
-                msgId,
-                fromUid: authorUid,
-            },
-            webpush: {
-                notification: {
-                    title: `Message from ${senderName}`,
-                    body,
-                },
-                fcmOptions: {
-                    link: url,
-                },
-            },
-            tokens,
+        const payload = {
+            title: `Message from ${senderName}`,
+            body,
+            type: "dm-message",
+            groupId,
+            pairId,
+            msgId,
+            fromUid: authorUid,
+            url: "/dashboard",
         };
-        const resp = await admin.messaging().sendEachForMulticast(message);
-        const delivered = resp.responses.filter((r) => r.success).length;
-        const failures = resp.responses.length - delivered;
+        let delivered = 0;
+        for (const uid of recipients) {
+            delivered += await (0, notifications_1.sendToUser)(uid, payload);
+        }
         console.log("onDirectMessageCreate: pushed", {
             groupId,
             pairId,
             msgId,
             recipients: recipients.length,
-            tokens: tokens.length,
             delivered,
-            failures,
         });
     }
     catch (err) {
