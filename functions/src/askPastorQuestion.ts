@@ -19,7 +19,6 @@ export const askPastorQuestion = functions.onCall(
     }
 
     const pastorUid = PASTOR_UID;
-    const pairId = [uid, pastorUid].sort().join("_");
 
     let displayName = "Member";
     try {
@@ -32,22 +31,6 @@ export const askPastorQuestion = functions.onCall(
     } catch {
       // ignore
     }
-
-    await db.doc(`dmThreads/${pairId}`).set(
-      {
-        users: [uid, pastorUid].sort(),
-        userNames: { [uid]: displayName },
-      },
-      { merge: true },
-    );
-
-    await db.collection(`dmMessages/${pairId}/messages`).add({
-      text,
-      from: uid,
-      to: pastorUid,
-      displayName,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
 
     await db.collection("pastorQuestions").add({
       text,

@@ -50,7 +50,6 @@ exports.askPastorQuestion = functions.onCall({ region: "us-central1" }, async (r
         throw new functions.HttpsError("invalid-argument", "text is required");
     }
     const pastorUid = PASTOR_UID;
-    const pairId = [uid, pastorUid].sort().join("_");
     let displayName = "Member";
     try {
         const userSnap = await db.doc(`users/${uid}`).get();
@@ -63,17 +62,6 @@ exports.askPastorQuestion = functions.onCall({ region: "us-central1" }, async (r
     catch {
         // ignore
     }
-    await db.doc(`dmThreads/${pairId}`).set({
-        users: [uid, pastorUid].sort(),
-        userNames: { [uid]: displayName },
-    }, { merge: true });
-    await db.collection(`dmMessages/${pairId}/messages`).add({
-        text,
-        from: uid,
-        to: pastorUid,
-        displayName,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
     await db.collection("pastorQuestions").add({
         text,
         from: uid,
