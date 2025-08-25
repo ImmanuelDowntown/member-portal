@@ -65,6 +65,21 @@ export const onDmDockMessageCreate = functions.firestore.onDocumentCreated(
       let delivered = 0;
       for (const uid of recipients) {
         delivered += await sendToUser(uid, payload);
+        // Also write a notification document for in-app display
+        try {
+          await db.collection(`users/${uid}/notifications`).add({
+            type: "dm-message",
+            text: `Message from ${senderName}: ${body}`,
+            href: "/dashboard",
+            pairId,
+            msgId,
+            fromUid: authorUid,
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } catch (e) {
+          console.warn("onDmDockMessageCreate: failed to write notification", e);
+        }
       }
       console.log("onDmDockMessageCreate: pushed", {
         pairId,
