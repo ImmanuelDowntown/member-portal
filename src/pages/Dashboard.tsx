@@ -1,7 +1,7 @@
 /* src/pages/Dashboard.tsx
    Fix (schema-aligned):
-   - Super-admin: /admins/{uid} exists → watch ALL membershipRequests (collectionGroup, no status filter)
-   - Group-admin: any /groups/{gid}/groupAdmins/{uid} doc exists → watch that group's membershipRequests (no status filter)
+   - Super-admin: /admins/{uid} exists → watch ALL membershipRequests where status == 'pending'
+   - Group-admin: any /groups/{gid}/groupAdmins/{uid} doc exists → watch that group's membershipRequests where status == 'pending'
    - New users: for super-admins, watch users where reviewed == false OR status == 'pending' OR needsReview == true
    - Button is yellow if either condition is true, grey otherwise.
 */
@@ -84,10 +84,13 @@ export default function Dashboard() {
         isSuper = superSnap.exists();
       } catch { isSuper = false; }
 
-      // 1) Watch membership requests (no status filter: existence == pending)
+      // 1) Watch membership requests with status == "pending"
       if (isSuper) {
         try {
-          const allPendingQ = collectionGroup(db, "membershipRequests");
+          const allPendingQ = query(
+            collectionGroup(db, "membershipRequests"),
+            where("status", "==", "pending")
+          );
           unsubs.push(onSnapshot(
             allPendingQ,
             (qs) => { pendingRequestsAnyRef.current = qs.size > 0; updateFlag(); },
@@ -123,10 +126,13 @@ export default function Dashboard() {
                 }
               }
 
-              // Subscribe to each group's membershipRequests (existence == pending)
+              // Subscribe to each group's membershipRequests (status == "pending")
               nextIds.forEach((gid) => {
                 if (groupUnsubsRef.current.has(gid)) return;
-                const pendingQ = collection(db, `groups/${gid}/membershipRequests`);
+                const pendingQ = query(
+                  collection(db, `groups/${gid}/membershipRequests`),
+                  where("status", "==", "pending")
+                );
                 const gu = onSnapshot(
                   pendingQ,
                   (qs2) => {
