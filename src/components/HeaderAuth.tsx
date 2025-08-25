@@ -2,15 +2,8 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { signOut } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { auth } from "@/lib/firebase";
 import mainLogo from "@/assets/Header_Logo.png";
-
-function firstNameFrom(full?: string | null) {
-  if (!full) return null;
-  const parts = full.trim().split(/\s+/);
-  return parts[0] || null;
-}
 
 function useStandalone() {
   const [standalone, setStandalone] = useState(false);
@@ -30,7 +23,6 @@ export default function HeaderAuth(){
   const loc = useLocation();
   const pastorUid = import.meta.env.VITE_PASTOR_UID as string | undefined;
   const isPastor = user?.uid === pastorUid;
-  const [greetingName, setGreetingName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
   const isStandalone = useStandalone();
 
@@ -38,27 +30,6 @@ export default function HeaderAuth(){
   const baseNavItem = "inline-flex items-center justify-center min-h-[2.25rem] px-3 py-2 rounded-lg text-sm leading-tight text-center whitespace-normal md:whitespace-nowrap";
   const navItemClass = (isActive: boolean) =>
     `${baseNavItem} ${isActive ? "bg-muted text-accent" : "text-text hover:text-accent"}`;
-
-  useEffect(() => {
-    let isMounted = true;
-    async function resolveName() {
-      if (!user) { if (isMounted) setGreetingName(""); return; }
-      const fromAuth = firstNameFrom(user.displayName);
-      if (fromAuth) { if (isMounted) setGreetingName(fromAuth); return; }
-      try {
-        const snap = await getDoc(doc(db, "users", user.uid));
-        if (snap.exists()) {
-          const data = snap.data() as any;
-          const composite = data?.name || [data?.firstName, data?.lastName].filter(Boolean).join(" ").trim();
-          const fromDoc = firstNameFrom(composite);
-          if (fromDoc) { if (isMounted) setGreetingName(fromDoc); return; }
-        }
-      } catch {}
-      if (isMounted) setGreetingName("there");
-    }
-    resolveName();
-    return () => { isMounted = false; };
-  }, [user]);
 
   // Close mobile menu on route change
   useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
@@ -86,8 +57,8 @@ export default function HeaderAuth(){
             </Link>
           </div>
 
-          {/* Mobile hamburger (top-right) */}
-          <div className="col-start-2 row-start-1 md:hidden flex justify-end">
+          {/* Hamburger (top-right) */}
+          <div className="col-start-2 md:col-start-3 row-start-1 flex justify-end">
             <button
               aria-label="Open menu"
               aria-expanded={menuOpen}
@@ -105,22 +76,8 @@ export default function HeaderAuth(){
             <NavLink to="/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
             <NavLink to="/forum" className={({isActive}) => navItemClass(isActive)}>The Forum</NavLink>
             <NavLink to="/groups" className={({isActive}) => navItemClass(isActive)}>Groups</NavLink>
-            {isPastor && <NavLink to="/pastor/questions" className={({isActive}) => navItemClass(isActive)}>Questions</NavLink>}
-            {isAdmin && <NavLink to="/admin" className={({isActive}) => navItemClass(isActive)}>Admin</NavLink>}
           </nav>
 
-          {/* Desktop actions */}
-          <div className="hidden md:flex md:col-start-3 md:row-start-1 justify-end items-center gap-2">
-            {user ? (
-              <>
-                <span className="text-sm text-text2">Hi{greetingName ? `, ${greetingName}` : ""}</span>
-                <Link to="/profile" className="btn btn-outline btn-md">Profile</Link>
-                <button className="btn btn-outline btn-md" onClick={() => signOut(auth)}>Sign out</button>
-              </>
-            ) : (
-              loc.pathname !== "/login" && <Link to="/login" className="btn btn-outline btn-md">Sign in</Link>
-            )}
-          </div>
         </div>
 
         {/* Mobile menu overlay */}
