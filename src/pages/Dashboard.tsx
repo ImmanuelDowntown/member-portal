@@ -37,6 +37,7 @@ export default function Dashboard() {
   // Combined flags
   const pendingRequestsAnyRef = useRef<boolean>(false); // any membershipRequests docs
   const newUsersAnyRef = useRef<boolean>(false);        // new/unreviewed users (super-admin only)
+  const newUsersCountsRef = useRef<Map<string, number>>(new Map());
 
   // For group-admins: dynamic per-group listeners
   const groupUnsubsRef = useRef<Map<string, Unsubscribe>>(new Map());
@@ -48,6 +49,15 @@ export default function Dashboard() {
 
     const updateFlag = () => {
       if (!cancelled) setNeedsAttention(pendingRequestsAnyRef.current || newUsersAnyRef.current);
+    };
+
+    const recomputeNewUsers = () => {
+      let any = false;
+      for (const count of newUsersCountsRef.current.values()) {
+        if ((count ?? 0) > 0) { any = true; break; }
+      }
+      newUsersAnyRef.current = any;
+      updateFlag();
     };
 
     const clearGroupListeners = () => {
@@ -62,6 +72,10 @@ export default function Dashboard() {
       const u = auth.currentUser;
       if (!u) return;
       const uid = u.uid;
+      pendingRequestsAnyRef.current = false;
+      newUsersCountsRef.current.clear();
+      newUsersAnyRef.current = false;
+      updateFlag();
 
       // Super-admin detection: /admins/{uid} exists
       let isSuper = false;
@@ -157,20 +171,29 @@ export default function Dashboard() {
 
       // 2) New/unreviewed users (super-admin only)
       if (isSuper) {
-        const watchUsers = (qRef: ReturnType<typeof query>) => {
+        const watchUsers = (key: string, qRef: ReturnType<typeof query>) => {
           try {
             const unsub = onSnapshot(
               qRef,
-              (qs) => { newUsersAnyRef.current = qs.size > 0; updateFlag(); },
-              () => { /* ignore */ }
+              (qs) => {
+                newUsersCountsRef.current.set(key, qs.size);
+                recomputeNewUsers();
+              },
+              () => {
+                newUsersCountsRef.current.set(key, 0);
+                recomputeNewUsers();
+              }
             );
             unsubs.push(unsub);
-          } catch { /* ignore */ }
+          } catch {
+            newUsersCountsRef.current.set(key, 0);
+            recomputeNewUsers();
+          }
         };
         // Use whichever your schema supports:
-        watchUsers(query(collection(db, "users"), where("reviewed", "==", false)));
-        watchUsers(query(collection(db, "users"), where("status", "==", "pending")));
-        watchUsers(query(collection(db, "users"), where("needsReview", "==", true)));
+        watchUsers("reviewed", query(collection(db, "users"), where("reviewed", "==", false)));
+        watchUsers("status", query(collection(db, "users"), where("status", "==", "pending")));
+        watchUsers("needsReview", query(collection(db, "users"), where("needsReview", "==", true)));
       }
     }
 
@@ -180,6 +203,8 @@ export default function Dashboard() {
       cancelled = true;
       unsubs.forEach((u) => { try { u(); } catch {} });
       clearGroupListeners();
+      newUsersCountsRef.current.clear();
+      newUsersAnyRef.current = false;
     };
   }, [auth, db]);
 
