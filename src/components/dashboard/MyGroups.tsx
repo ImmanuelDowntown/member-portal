@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import { db } from '../../lib/firebase'
@@ -12,13 +12,14 @@ export default function MyGroups() {
     if (!uid) return
     const colRef = collection(db, 'users', uid, 'memberships')
     const unsub = onSnapshot(colRef, async (snap) => {
-      const groupIds = snap.docs.map(d => (d.data() as Membership).groupId)
-      // fetch each group doc in parallel
+      const memberships = snap.docs.map(d => ({ id: d.id, ...(d.data() as Membership) }))
+      // fetch each group doc in parallel and merge unread counts from memberships
       const docs = await Promise.all(
-        groupIds.map(async (gid) => {
+        memberships.map(async (m) => {
+          const gid = m.groupId || m.id
           const gref = doc(db, 'groups', gid)
           const g = await getDoc(gref)
-          return g.exists() ? ({ id: g.id, ...(g.data() as any) } as Group) : null
+          return g.exists() ? ({ id: g.id, ...(g.data() as any), unread: m.unread } as Group) : null
         })
       )
       setGroups(docs.filter(Boolean) as Group[])
