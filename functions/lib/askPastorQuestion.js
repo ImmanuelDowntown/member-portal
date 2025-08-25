@@ -62,12 +62,14 @@ exports.askPastorQuestion = functions.onCall({ region: "us-central1" }, async (r
     catch {
         // ignore
     }
-    await db.collection("pastorQuestions").add({
+    console.log("askPastorQuestion called", { uid, text });
+    const docRef = await db.collection("pastorQuestions").add({
         text,
         from: uid,
         to: pastorUid,
         displayName,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    console.log("askPastorQuestion document created", docRef.id);
     return { ok: true };
 });
