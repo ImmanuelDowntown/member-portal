@@ -8,6 +8,7 @@
 import * as functions from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 import type { GroupDoc } from "./types/firestore";
+import { sendToUser } from "./notifications";
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -34,17 +35,6 @@ async function getActiveMemberUids(groupId: string, excludeUid?: string): Promis
   return excludeUid ? list.filter((u) => u !== excludeUid) : list;
 }
 
-async function getUserTokens(uid: string): Promise<string[]> {
-  const snap = await db.collection(`users/${uid}/pushTokens`).get();
-  const tokens: string[] = [];
-  snap.forEach((doc) => {
-    const data = doc.data() as { token?: string };
-    tokens.push(data?.token || doc.id);
-  });
-  // Dedupe in case of duplicates
-  return Array.from(new Set(tokens));
-}
-
 export const onGroupMessageCreate = functions.firestore.onDocumentCreated(
   "groups/{groupId}/messages/{messageId}",
   async (event) => {
@@ -60,58 +50,48 @@ export const onGroupMessageCreate = functions.firestore.onDocumentCreated(
       const groupName = group?.name || groupId;
       const slug = groupId; // user confirmed: slug is the doc ID
 
-      // Build tokens list: all members except author, and not muted
       const memberUids = await getActiveMemberUids(groupId, authorUid);
       if (memberUids.length === 0) {
         console.log("onGroupMessageCreate: no recipients (after excluding author/muted)", { groupId, messageId, authorUid });
-        return;
-      }
-      const tokenLists = await Promise.all(memberUids.map(getUserTokens));
-      const tokens = Array.from(new Set(tokenLists.flat().filter(Boolean)));
-      if (tokens.length === 0) {
-        console.log("onGroupMessageCreate: no device tokens for members", { groupId, messageId });
         return;
       }
 
       const body = data.text ? previewText(data.text, 160) : "New message posted.";
       const url = `/groups/${encodeURIComponent(slug)}`;
 
-      const message = {
-        notification: {
-          title: `New message in ${groupName}`,
-          body,
-        },
-        data: {
-          title: `New message in ${groupName}`,
-          body,
-          url,
-          type: "group-message",
-          groupId,
-          messageId,
-        },
-        webpush: {
-          notification: {
-            title: `New message in ${groupName}`,
-            body,
-          },
-          fcmOptions: {
-            link: url,
-          },
-        },
-        tokens,
-      } as admin.messaging.MulticastMessage;
+      const payload = {
+        title: `New message in ${groupName}`,
+        body,
+        url,
+        type: "group-message",
+        groupId,
+        messageId,
+      } as Record<string, unknown>;
 
-      const resp = await admin.messaging().sendEachForMulticast(message);
-      const delivered = resp.responses.filter((r) => r.success).length;
-      const failures = resp.responses.filter((r) => !r.success).length;
+      let delivered = 0;
+      for (const uid of memberUids) {
+        delivered += await sendToUser(uid, payload);
+        try {
+          await db.collection(`users/${uid}/notifications`).add({
+            type: "group-message",
+            text: `New message in ${groupName}: ${body}`,
+            href: url,
+            groupId,
+            groupName,
+            messageId,
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } catch (e) {
+          console.warn("onGroupMessageCreate: failed to write notification", e);
+        }
+      }
 
       console.log("onGroupMessageCreate: pushed", {
         groupId,
         messageId,
         members: memberUids.length,
-        tokens: tokens.length,
         delivered,
-        failures,
       });
     } catch (err) {
       console.error("onGroupMessageCreate failed", err);
@@ -138,46 +118,40 @@ export const onGroupReplyCreate = functions.firestore.onDocumentCreated(
         return;
       }
 
-      const tokenSets = await Promise.all(recipientUids.map((u) => getUserTokens(u)));
-      const tokens = Array.from(new Set(tokenSets.flat()));
-      if (tokens.length === 0) {
-        console.log("onGroupReplyCreate: no device tokens for members", { groupId, messageId, replyId });
-        return;
-      }
-
       const body = data.text ? previewText(data.text, 160) : "New reply posted.";
       const url = `/groups/${encodeURIComponent(slug)}`;
 
-      const message = {
-        notification: {
-          title: `New reply in ${groupName}`,
-          body,
-        },
-        data: {
-          title: `New reply in ${groupName}`,
-          body,
-          url,
-          type: "group-reply",
-          groupId,
-          messageId,
-          replyId,
-        },
-        webpush: {
-          notification: {
-            title: `New reply in ${groupName}`,
-            body,
-          },
-          fcmOptions: {
-            link: url,
-          },
-        },
-        tokens,
-      } as admin.messaging.MulticastMessage;
+      const payload = {
+        title: `New reply in ${groupName}`,
+        body,
+        url,
+        type: "group-reply",
+        groupId,
+        messageId,
+        replyId,
+      } as Record<string, unknown>;
 
-      const resp = await admin.messaging().sendEachForMulticast(message);
-      const success = resp.responses.filter(r => r.success).length;
-      const failure = resp.responses.length - success;
-      console.log("onGroupReplyCreate: sent", { groupId, messageId, replyId, tokens: tokens.length, success, failure });
+      let delivered = 0;
+      for (const uid of recipientUids) {
+        delivered += await sendToUser(uid, payload);
+        try {
+          await db.collection(`users/${uid}/notifications`).add({
+            type: "group-reply",
+            text: `New reply in ${groupName}: ${body}`,
+            href: url,
+            groupId,
+            groupName,
+            messageId,
+            replyId,
+            read: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } catch (e) {
+          console.warn("onGroupReplyCreate: failed to write notification", e);
+        }
+      }
+
+      console.log("onGroupReplyCreate: pushed", { groupId, messageId, replyId, recipients: recipientUids.length, delivered });
     } catch (err) {
       console.error("onGroupReplyCreate failed", err);
     }
