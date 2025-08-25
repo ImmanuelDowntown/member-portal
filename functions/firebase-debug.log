@@ -1,0 +1,75 @@
+[debug] [2025-08-25T12:43:11.968Z] ----------------------------------------------------------------------
+[debug] [2025-08-25T12:43:11.971Z] Command:       /Users/samuelosborn/.nvm/versions/node/v22.18.0/bin/node /Users/samuelosborn/.nvm/versions/node/v22.18.0/bin/firebase functions:shell
+[debug] [2025-08-25T12:43:11.972Z] CLI Version:   14.12.1
+[debug] [2025-08-25T12:43:11.972Z] Platform:      darwin
+[debug] [2025-08-25T12:43:11.972Z] Node Version:  v22.18.0
+[debug] [2025-08-25T12:43:11.972Z] Time:          Mon Aug 25 2025 08:43:11 GMT-0400 (Eastern Daylight Time)
+[debug] [2025-08-25T12:43:11.972Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-08-25T12:43:12.148Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-25T12:43:12.149Z] > authorizing via signed-in user (immanueldowntown@gmail.com)
+[debug] [2025-08-25T12:43:12.149Z] [iam] checking project immanuel-app for permissions ["firebase.projects.get"]
+[debug] [2025-08-25T12:43:12.150Z] Checked if tokens are valid: true, expires at: 1756129298892
+[debug] [2025-08-25T12:43:12.150Z] Checked if tokens are valid: true, expires at: 1756129298892
+[debug] [2025-08-25T12:43:12.151Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/immanuel-app:testIamPermissions [none]
+[debug] [2025-08-25T12:43:12.151Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/immanuel-app:testIamPermissions x-goog-quota-user=projects/immanuel-app
+[debug] [2025-08-25T12:43:12.151Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/immanuel-app:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-08-25T12:43:12.422Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/immanuel-app:testIamPermissions 200
+[debug] [2025-08-25T12:43:12.422Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/immanuel-app:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2025-08-25T12:43:12.923Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-25T12:43:12.952Z] defaultcredentials: writing to file /Users/samuelosborn/.config/firebase/immanueldowntown_gmail_com_application_default_credentials.json
+[debug] [2025-08-25T12:43:12.953Z] DEBUG: Setting GAC to /Users/samuelosborn/.config/firebase/immanueldowntown_gmail_com_application_default_credentials.json
+[debug] [2025-08-25T12:43:12.954Z] Checked if tokens are valid: true, expires at: 1756129298892
+[debug] [2025-08-25T12:43:12.954Z] Checked if tokens are valid: true, expires at: 1756129298892
+[debug] [2025-08-25T12:43:12.954Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/immanuel-app/adminSdkConfig [none]
+[debug] [2025-08-25T12:43:13.262Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/immanuel-app/adminSdkConfig 200
+[debug] [2025-08-25T12:43:13.262Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/immanuel-app/adminSdkConfig {"projectId":"immanuel-app","storageBucket":"immanuel-app.firebasestorage.app"}
+[debug] [2025-08-25T12:43:13.291Z] [functions] Watching "/Volumes/Sams SSD/Immanuel/immanuel-members-portal/functions" for Cloud Functions...
+[debug] [2025-08-25T12:43:13.295Z] Validating nodejs source
+[debug] [2025-08-25T12:43:13.896Z] > [functions] package.json contents: {
+  "name": "functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore",
+    "deploy": "npm run build && firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  },
+  "files": [
+    "lib"
+  ]
+}
+[debug] [2025-08-25T12:43:13.896Z] Building nodejs source
+[debug] [2025-08-25T12:43:13.897Z] Failed to find version of module node: reached end of search path /Volumes/Sams SSD/Immanuel/immanuel-members-portal/functions/node_modules
+[warn] ⚠  functions: Your requested "node" version "20" doesn't match your global version "22". Using node@22 from host. 
+[debug] [2025-08-25T12:43:13.900Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-08-25T12:43:13.908Z] Found firebase-functions binary at '/Volumes/Sams SSD/Immanuel/immanuel-members-portal/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8231
+
+[debug] [2025-08-25T12:43:14.485Z] Got response from /__/functions.yaml {"endpoints":{"onGroupMessageCreate":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"eventTrigger":{"eventType":"google.cloud.firestore.document.v1.created","eventFilters":{"database":"(default)","namespace":"(default)"},"eventFilterPathPatterns":{"document":"groups/{groupId}/messages/{messageId}"},"retry":false},"entryPoint":"onGroupMessageCreate"},"onGroupReplyCreate":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"eventTrigger":{"eventType":"google.cloud.firestore.document.v1.created","eventFilters":{"database":"(default)","namespace":"(default)"},"eventFilterPathPatterns":{"document":"groups/{groupId}/messages/{messageId}/replies/{replyId}"},"retry":false},"entryPoint":"onGroupReplyCreate"},"onResourceCreated":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"eventTrigger":{"eventType":"google.cloud.firestore.document.v1.created","eventFilters":{"database":"(default)","namespace":"(default)"},"eventFilterPathPatterns":{"document":"groups/{groupId}/resources/{resourceId}"},"retry":false},"entryPoint":"onResourceCreated"},"onDirectMessageCreate":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"eventTrigger":{"eventType":"google.cloud.firestore.document.v1.created","eventFilters":{"database":"(default)","namespace":"(default)"},"eventFilterPathPatterns":{"document":"groups/{groupId}/directMessages/{pairId}/messages/{msgId}"},"retry":false},"entryPoint":"onDirectMessageCreate"},"onDmDockMessageCreate":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"eventTrigger":{"eventType":"google.cloud.firestore.document.v1.created","eventFilters":{"database":"(default)","namespace":"(default)"},"eventFilterPathPatterns":{"document":"dmMessages/{pairId}/messages/{msgId}"},"retry":false},"entryPoint":"onDmDockMessageCreate"},"sendTestPush":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"sendTestPush"},"registerPushToken":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"registerPushToken"},"onUserCreated":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"eventTrigger":{"eventType":"google.cloud.firestore.document.v1.created","eventFilters":{"database":"(default)","namespace":"(default)"},"eventFilterPathPatterns":{"document":"users/{uid}"},"retry":false},"entryPoint":"onUserCreated"},"setUserDisabled":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"callableTrigger":{},"entryPoint":"setUserDisabled"},"deleteUserAccount":{"availableMemoryMb":null,"timeoutSeconds":540,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"callableTrigger":{},"entryPoint":"deleteUserAccount"},"askPastorQuestion":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"callableTrigger":{},"entryPoint":"askPastorQuestion"},"grantGroupAdminByEmail":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"region":["us-central1"],"callableTrigger":{},"entryPoint":"grantGroupAdminByEmail"},"approveMembershipRequest":{"platform":"gcfv1","labels":{},"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"serviceAccountEmail":null,"vpc":null,"region":["us-central1"],"callableTrigger":{},"entryPoint":"approveMembershipRequest"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2025-08-25T12:43:18.515Z] [functions] Loaded functions definitions from source: onGroupMessageCreate, onGroupReplyCreate, onResourceCreated, onDirectMessageCreate, onDmDockMessageCreate, sendTestPush, registerPushToken, onUserCreated, setUserDisabled, deleteUserAccount, askPastorQuestion, grantGroupAdminByEmail, approveMembershipRequest.
+[debug] [2025-08-25T12:43:18.516Z] [functions[us-central1-onGroupMessageCreate]] function ignored because the firestore emulator does not exist or is not running.
+[debug] [2025-08-25T12:43:18.516Z] [functions[us-central1-onGroupReplyCreate]] function ignored because the firestore emulator does not exist or is not running.
+[debug] [2025-08-25T12:43:18.516Z] [functions[us-central1-onResourceCreated]] function ignored because the firestore emulator does not exist or is not running.
+[debug] [2025-08-25T12:43:18.517Z] [functions[us-central1-onDirectMessageCreate]] function ignored because the firestore emulator does not exist or is not running.
+[debug] [2025-08-25T12:43:18.517Z] [functions[us-central1-onDmDockMessageCreate]] function ignored because the firestore emulator does not exist or is not running.
+[debug] [2025-08-25T12:43:18.517Z] [functions[us-central1-sendTestPush]] http function initialized (http://127.0.0.1:5001/immanuel-app/us-central1/sendTestPush).
+[debug] [2025-08-25T12:43:18.517Z] [functions[us-central1-registerPushToken]] http function initialized (http://127.0.0.1:5001/immanuel-app/us-central1/registerPushToken).
+[debug] [2025-08-25T12:43:18.517Z] [functions[us-central1-onUserCreated]] function ignored because the firestore emulator does not exist or is not running.
+[debug] [2025-08-25T12:43:18.517Z] [functions[us-central1-setUserDisabled]] http function initialized (http://127.0.0.1:5001/immanuel-app/us-central1/setUserDisabled).
+[debug] [2025-08-25T12:43:18.517Z] [functions[us-central1-deleteUserAccount]] http function initialized (http://127.0.0.1:5001/immanuel-app/us-central1/deleteUserAccount).
+[debug] [2025-08-25T12:43:18.517Z] [functions[us-central1-askPastorQuestion]] http function initialized (http://127.0.0.1:5001/immanuel-app/us-central1/askPastorQuestion).
+[debug] [2025-08-25T12:43:18.518Z] [functions[us-central1-grantGroupAdminByEmail]] http function initialized (http://127.0.0.1:5001/immanuel-app/us-central1/grantGroupAdminByEmail).
+[debug] [2025-08-25T12:43:18.518Z] [functions[us-central1-approveMembershipRequest]] http function initialized (http://127.0.0.1:5001/immanuel-app/us-central1/approveMembershipRequest).
+[info] i  functions: Loaded functions: onGroupMessageCreate, onGroupReplyCreate, onResourceCreated, onDirectMessageCreate, onDmDockMessageCreate, sendTestPush, registerPushToken, onUserCreated, setUserDisabled, deleteUserAccount, askPastorQuestion, grantGroupAdminByEmail, approveMembershipRequest 
+[warn] ⚠  functions: The following emulators are not running, calls to these services will affect production: firestore, database, pubsub, storage, eventarc, tasks 

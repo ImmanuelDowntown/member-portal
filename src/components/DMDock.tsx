@@ -616,23 +616,31 @@ export default function DMDock() {
                   {msgs.length === 0 && <div className="text-sm text-slate-300">No messages in this conversation yet.</div>}
                 </div>
 
-                <div className="border-t border-slate-800 p-2 flex gap-2">
-                  <textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Write a message…"
-                    className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none text-white placeholder:text-slate-400 h-10 md:h-auto md:min-h-[40px] max-h-28"
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void send()}
-                    className="rounded-lg px-3 py-2 text-white text-sm hover:opacity-90"
-                    style={{ backgroundColor: "#919FAA" }}
-                    disabled={!text.trim()}
-                  >
-                    Send
-                  </button>
+                <div className="border-t border-slate-800 p-2">
+                  <div className="relative flex">
+                    <textarea
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      placeholder="Write a message…"
+                      className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-base outline-none text-white placeholder:text-slate-400 h-10 md:h-auto md:min-h-[40px] max-h-28 pr-10"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void send();
+                        }
+                      }}
+                      style={{ fontSize: "16px" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void send()}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full w-8 h-8 flex items-center justify-center text-white text-lg hover:opacity-90 disabled:opacity-50"
+                      style={{ backgroundColor: "#919FAA" }}
+                      disabled={!text.trim()}
+                    >
+                      ↑
+                    </button>
+                  </div>
                 </div>
               </>
             )}
