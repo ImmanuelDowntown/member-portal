@@ -71,6 +71,27 @@ exports.onResourceCreated = functions.firestore.onDocumentCreated("groups/{group
             resourceId: String(resourceId),
         };
         const delivered = await (0, notifications_1.sendToGroup)(groupId, payload);
+        // Also create an unread notification doc for each group member
+        const membersSnap = await db.collection(`groups/${groupId}/members`).get();
+        const authorUid = typeof resource.uid === "string" ? String(resource.uid) : undefined;
+        const memberUids = membersSnap.docs.map((d) => d.id).filter((uid) => uid !== authorUid);
+        for (const uid of memberUids) {
+            try {
+                await db.collection(`users/${uid}/notifications`).add({
+                    type: "resource",
+                    text: `New resource in ${groupName}: ${title}`,
+                    href: url,
+                    groupId,
+                    groupName,
+                    resourceId,
+                    read: false,
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            }
+            catch (e) {
+                console.warn("onResourceCreated: failed to write notification", e);
+            }
+        }
         console.log("onResourceCreated: pushed", {
             groupId,
             resourceId,
