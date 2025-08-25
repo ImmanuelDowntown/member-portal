@@ -11,6 +11,7 @@ export { onGroupMessageCreate, onGroupReplyCreate } from "./onGroupMessage";
 export { onResourceCreated } from "./onResourceCreated";
 export { onDirectMessageCreate } from "./onDirectMessage";
 export { onDmDockMessageCreate } from "./onDmDockMessage";
+export { mirrorDirectMessageCreate } from "./mirrorDirectMessage";
 export { sendTestPush, registerPushToken } from "./notifications";
 export { onUserCreated } from "./onUserCreated";
 export { setUserDisabled, deleteUserAccount } from "./adminUsers";
