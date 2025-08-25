@@ -49,6 +49,14 @@ export const askPastorQuestion = functions.onCall(
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    await db.collection("pastorQuestions").add({
+      text,
+      from: uid,
+      to: pastorUid,
+      displayName,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
     return { ok: true };
   },
 );

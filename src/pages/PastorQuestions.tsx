@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collectionGroup, onSnapshot, orderBy, query, where, type DocumentData } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, where, type DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -20,7 +20,7 @@ export default function PastorQuestions() {
   useEffect(() => {
     if (!user || user.uid !== pastorUid) return;
     const q = query(
-      collectionGroup(db, "messages"),
+      collection(db, "pastorQuestions"),
       where("to", "==", user.uid),
       orderBy("createdAt", "desc"),
     );

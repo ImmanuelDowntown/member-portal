@@ -74,5 +74,12 @@ exports.askPastorQuestion = functions.onCall({ region: "us-central1" }, async (r
         displayName,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+    await db.collection("pastorQuestions").add({
+        text,
+        from: uid,
+        to: pastorUid,
+        displayName,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return { ok: true };
 });
