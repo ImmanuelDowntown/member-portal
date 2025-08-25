@@ -87,7 +87,12 @@ exports.onGroupMessageCreate = functions.firestore.onDocumentCreated("groups/{gr
         };
         let delivered = 0;
         for (const uid of memberUids) {
-            delivered += await (0, notifications_1.sendToUser)(uid, payload);
+            try {
+                delivered += await (0, notifications_1.sendToUser)(uid, payload);
+            }
+            catch (e) {
+                console.warn("onGroupMessageCreate: sendToUser failed", { uid, e });
+            }
             try {
                 await db.collection(`users/${uid}/notifications`).add({
                     type: "group-message",
@@ -144,7 +149,12 @@ exports.onGroupReplyCreate = functions.firestore.onDocumentCreated("groups/{grou
         };
         let delivered = 0;
         for (const uid of recipientUids) {
-            delivered += await (0, notifications_1.sendToUser)(uid, payload);
+            try {
+                delivered += await (0, notifications_1.sendToUser)(uid, payload);
+            }
+            catch (e) {
+                console.warn("onGroupReplyCreate: sendToUser failed", { uid, e });
+            }
             try {
                 await db.collection(`users/${uid}/notifications`).add({
                     type: "group-reply",
