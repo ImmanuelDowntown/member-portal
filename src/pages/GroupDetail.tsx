@@ -20,11 +20,14 @@ import { app } from "@/lib/firebase";
 import Loader from "@/components/Loader";
 import GroupChat from "@/components/groups/GroupChat";
 
+const TIMEZONE = (import.meta.env.VITE_TZ as string | undefined) || "America/New_York";
+
 type GroupDoc = {
   name?: string;
   description?: string;
   parent?: string | null;
   campus?: string | null;
+  calendarIds?: string[];
 };
 
 type Resource = {
@@ -54,7 +57,14 @@ export default function GroupDetail() {
 
   const [resources, setResources] = React.useState<Resource[]>([]);
   const [members, setMembers] = React.useState<Member[]>([]);
-  
+
+  const calendarSrc = React.useMemo(() => {
+    const ids = group?.calendarIds || [];
+    if (!ids.length) return null;
+    const params = ids.map((id) => `src=${encodeURIComponent(id)}`).join("&");
+    return `https://calendar.google.com/calendar/embed?${params}&ctz=${encodeURIComponent(TIMEZONE)}`;
+  }, [group?.calendarIds]);
+
 
   // Admin resource editor state
   const [newTitle, setNewTitle] = React.useState<string>("");
@@ -296,6 +306,24 @@ export default function GroupDetail() {
             </div>
           )}
         </div>
+
+        {/* Calendar */}
+        <section className="mt-6 rounded-xl border border-border bg-card p-5">
+          <h2 className="text-lg font-semibold text-accent">Calendar</h2>
+          <div className="mt-3 w-full">
+            {calendarSrc ? (
+              <iframe
+                className="w-full h-[440px] sm:h-[520px] md:h-[720px] rounded border-0"
+                src={calendarSrc}
+                title="Group Calendar"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <p className="text-sm text-text2">No calendar configured for this group.</p>
+            )}
+          </div>
+        </section>
 
         {/* Team Chat */}
         <div className="mt-6">

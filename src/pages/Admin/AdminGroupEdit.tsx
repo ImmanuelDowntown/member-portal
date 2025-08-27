@@ -12,6 +12,7 @@ type GroupForm = {
   meetingTime?: string | null;
   meetingFrequency?: "weekly" | "biweekly" | "monthly" | "" | null;
   imageUrl?: string | null;
+  calendarIds?: string[];
 };
 
 export default function AdminGroupEdit() {
@@ -40,6 +41,7 @@ export default function AdminGroupEdit() {
         meetingTime: data?.meetingTime ?? "",
         meetingFrequency: (data?.meetingFrequency as any) ?? "",
         imageUrl: data?.imageUrl ?? "",
+        calendarIds: Array.isArray((data as any)?.calendarIds) ? (data as any).calendarIds : [],
       });
       setLoading(false);
     }
@@ -62,6 +64,7 @@ export default function AdminGroupEdit() {
         meetingTime: (form?.meetingTime || "")?.trim() || null,
         meetingFrequency: (form?.meetingFrequency || "") as GroupForm["meetingFrequency"],
         imageUrl: (form?.imageUrl || "")?.trim() || null,
+        calendarIds: (form?.calendarIds || []).map((id) => id.trim()).filter(Boolean),
         updatedAt: serverTimestamp(),
       };
       await setDoc(doc(db, "groups", slug), payload as any, { merge: true });
@@ -171,6 +174,15 @@ export default function AdminGroupEdit() {
             onChange={e=>setForm(prev=>({ ...(prev as GroupForm), imageUrl: e.target.value }))}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             placeholder="https://…"
+          />
+        </Field>
+
+        <Field label="Google Calendar IDs (comma-separated)">
+          <input
+            value={form?.calendarIds?.join(", ") || ""}
+            onChange={e=>setForm(prev=>({ ...(prev as GroupForm), calendarIds: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) }))}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            placeholder="id1@group.calendar.google.com,id2@group.calendar.google.com"
           />
         </Field>
 

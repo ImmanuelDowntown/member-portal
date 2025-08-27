@@ -22,6 +22,7 @@ export default function AdminGroupNew() {
   const [meetingDay, setMeetingDay] = useState("");
   const [meetingTime, setMeetingTime] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [calendarIds, setCalendarIds] = useState("");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -50,6 +51,7 @@ export default function AdminGroupNew() {
         meetingDay: meetingDay || null,
         meetingTime: meetingTime || null,
         imageUrl: imageUrl || null,
+        calendarIds: calendarIds.split(",").map((id) => id.trim()).filter(Boolean),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -110,6 +112,15 @@ export default function AdminGroupNew() {
         </div>
         <Field label="Image URL (optional)">
           <input value={imageUrl} onChange={e=>setImageUrl(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="https://…" />
+        </Field>
+
+        <Field label="Google Calendar IDs (comma-separated)">
+          <input
+            value={calendarIds}
+            onChange={e=>setCalendarIds(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            placeholder="id1@group.calendar.google.com,id2@group.calendar.google.com"
+          />
         </Field>
 
         {status && <p className="text-sm text-slate-700">{status}</p>}
