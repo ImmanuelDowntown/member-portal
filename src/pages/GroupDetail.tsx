@@ -322,32 +322,6 @@ export default function GroupDetail() {
           )}
         </div>
 
-        {/* Calendar */}
-        <section className="mt-6 rounded-xl border border-border bg-card p-5">
-          <h2 className="text-lg font-semibold text-accent">Calendar</h2>
-          <p className="text-text2 text-sm mt-1">Synced from Google Calendar.</p>
-          <div className="mt-3 w-full">
-            {calendarSrc ? (
-              <iframe
-                className="w-full h-[440px] sm:h-[520px] md:h-[720px] rounded border-0"
-                src={calendarSrc}
-                title="Group Calendar"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            ) : (
-              <div className="w-full h-[440px] sm:h-[520px] md:h-[720px] flex items-center justify-center text-center p-6 text-sm text-text2 rounded bg-surface/50">
-                <div>
-                  <div className="font-medium text-text mb-1">Calendar not configured</div>
-                  <div>
-                    Ask an admin to set a <code className="px-1 py-0.5 rounded bg-surface/50">Calendar ID</code> in Settings.
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
         {/* Team Chat */}
         <div className="mt-6">
           <GroupChat groupId={slug} />
@@ -491,6 +465,32 @@ export default function GroupDetail() {
           ) : (
             <p className="text-sm text-text2 mt-2">No members are listed for this group yet.</p>
           )}
+        </section>
+
+        {/* Calendar */}
+        <section className="mt-6 rounded-xl border border-border bg-card p-5">
+          <h2 className="text-lg font-semibold text-accent">Calendar</h2>
+          <p className="text-text2 text-sm mt-1">Synced from Google Calendar.</p>
+          <div className="mt-3 w-full">
+            {calendarSrc ? (
+              <iframe
+                className="w-full h-[440px] sm:h-[520px] md:h-[720px] rounded border-0"
+                src={calendarSrc}
+                title="Group Calendar"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            ) : (
+              <div className="w-full h-[440px] sm:h-[520px] md:h-[720px] flex items-center justify-center text-center p-6 text-sm text-text2 rounded bg-surface/50">
+                <div>
+                  <div className="font-medium text-text mb-1">Calendar not configured</div>
+                  <div>
+                    Ask an admin to set a <code className="px-1 py-0.5 rounded bg-surface/50">Calendar ID</code> in Settings.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </div>
