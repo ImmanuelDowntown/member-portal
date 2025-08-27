@@ -33,6 +33,7 @@ export default function Dashboard() {
   const auth = useMemo(() => getAuth(app), []);
   const db = useMemo(() => getFirestore(app), []);
   const [needsAttention, setNeedsAttention] = useState(false);
+  const [calendarSrc, setCalendarSrc] = useState<string | null>(null);
 
   // Combined flags
   const pendingRequestsAnyRef = useRef<boolean>(false); // any membershipRequests docs
@@ -214,9 +215,31 @@ export default function Dashboard() {
     };
   }, [auth, db]);
 
-  const calendarSrc = GCAL_EMBED_URL
-    ? `${GCAL_EMBED_URL}${GCAL_EMBED_URL.includes("?") ? "&" : "?"}ctz=${encodeURIComponent(TIMEZONE)}`
-    : null;
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCalendar() {
+      try {
+        const snap = await getDoc(doc(db, "appSettings", "general"));
+        const id = snap.data()?.calendarId as string | undefined;
+        let src = id
+          ? `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(id)}`
+          : GCAL_EMBED_URL;
+        if (!cancelled) {
+          setCalendarSrc(
+            src
+              ? `${src}${src.includes("?") ? "&" : "?"}ctz=${encodeURIComponent(TIMEZONE)}`
+              : null
+          );
+        }
+      } catch {
+        if (!cancelled) setCalendarSrc(null);
+      }
+    }
+    void loadCalendar();
+    return () => {
+      cancelled = true;
+    };
+  }, [db]);
 
   const adminBtnClass = needsAttention
     ? "text-sm px-3 py-1.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200"
@@ -281,8 +304,8 @@ export default function Dashboard() {
               <div>
                 <div className="font-medium text-text mb-1">Calendar not configured</div>
                 <div>
-                  Set <code className="px-1 py-0.5 rounded bg-surface/50">VITE_GCAL_EMBED_URL</code> in your env.
-                  In Google Calendar → <em>Settings → Integrate calendar</em>, copy the <strong>Embed code</strong> <code>src</code> URL and paste it there.
+                  Set a <code className="px-1 py-0.5 rounded bg-surface/50">Calendar ID</code> in Settings.
+                  In Google Calendar → <em>Settings → Integrate calendar</em>, copy the <strong>Calendar ID</strong> and paste it there.
                 </div>
               </div>
             </div>

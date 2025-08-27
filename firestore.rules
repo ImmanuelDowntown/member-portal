@@ -253,6 +253,15 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // ---------- App settings ----------
+    // Stores global application configuration such as the calendar ID.
+    match /appSettings/{settingId} {
+      // Signed-in users may read settings.
+      allow get, list: if isSignedIn();
+      // Only super admins may modify settings.
+      allow create, update, delete: if isSuperAdmin();
+    }
+
     // >>> INSERTED: Global Direct Messages (new, does not affect other rules) <<<
     // Threads: /dmThreads/{pairId}
     match /dmThreads/{pairId} {

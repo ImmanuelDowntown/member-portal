@@ -58,12 +58,27 @@ export default function GroupDetail() {
   const [resources, setResources] = React.useState<Resource[]>([]);
   const [members, setMembers] = React.useState<Member[]>([]);
 
+  const [globalCalendarId, setGlobalCalendarId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    getDoc(doc(db, "appSettings", "general"))
+      .then((snap) => {
+        const id = snap.data()?.calendarId as string | undefined;
+        setGlobalCalendarId(id || null);
+      })
+      .catch(() => setGlobalCalendarId(null));
+  }, [db]);
+
   const calendarSrc = React.useMemo(() => {
-    const ids = group?.calendarIds || [];
+    const ids =
+      group?.calendarIds && group.calendarIds.length
+        ? group.calendarIds
+        : globalCalendarId
+        ? [globalCalendarId]
+        : [];
     if (!ids.length) return null;
     const params = ids.map((id) => `src=${encodeURIComponent(id)}`).join("&");
     return `https://calendar.google.com/calendar/embed?${params}&ctz=${encodeURIComponent(TIMEZONE)}`;
-  }, [group?.calendarIds]);
+  }, [group?.calendarIds, globalCalendarId]);
 
 
   // Admin resource editor state
@@ -310,6 +325,7 @@ export default function GroupDetail() {
         {/* Calendar */}
         <section className="mt-6 rounded-xl border border-border bg-card p-5">
           <h2 className="text-lg font-semibold text-accent">Calendar</h2>
+          <p className="text-text2 text-sm mt-1">Synced from Google Calendar.</p>
           <div className="mt-3 w-full">
             {calendarSrc ? (
               <iframe
@@ -320,7 +336,14 @@ export default function GroupDetail() {
                 referrerPolicy="no-referrer-when-downgrade"
               />
             ) : (
-              <p className="text-sm text-text2">No calendar configured for this group.</p>
+              <div className="w-full h-[440px] sm:h-[520px] md:h-[720px] flex items-center justify-center text-center p-6 text-sm text-text2 rounded bg-surface/50">
+                <div>
+                  <div className="font-medium text-text mb-1">Calendar not configured</div>
+                  <div>
+                    Ask an admin to set a <code className="px-1 py-0.5 rounded bg-surface/50">Calendar ID</code> in Settings.
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </section>
