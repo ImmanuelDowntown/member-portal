@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 
 function slugify(s: string) {
@@ -13,6 +14,7 @@ function slugify(s: string) {
 
 export default function AdminGroupNew() {
   const db = getFirestore(app);
+  const auth = getAuth(app);
   const nav = useNavigate();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -25,10 +27,22 @@ export default function AdminGroupNew() {
   const [calendarIds, setCalendarIds] = useState("");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [isSuper, setIsSuper] = useState<boolean | null>(null);
 
   const effectiveSlug = useMemo(() => (slug || slugify(name)), [slug, name]);
 
+  useEffect(() => {
+    async function check() {
+      const uid = auth.currentUser?.uid;
+      if (!uid) { setIsSuper(false); return; }
+      const snap = await getDoc(doc(db, "admins", uid));
+      setIsSuper(snap.exists());
+    }
+    check();
+  }, [auth.currentUser, db]);
+
   async function save() {
+    if (!isSuper) { setStatus("❌ Not authorized."); return; }
     const s = effectiveSlug.trim();
     if (!name.trim() || !s) { setStatus("⚠️ Name and slug are required."); return; }
     setSaving(true);
@@ -62,6 +76,9 @@ export default function AdminGroupNew() {
       setSaving(false);
     }
   }
+
+  if (isSuper === null) return <div className="max-w-3xl mx-auto p-6">Loading…</div>;
+  if (!isSuper) return <div className="max-w-3xl mx-auto p-6">Not authorized.</div>;
 
   return (
     <div className="max-w-3xl mx-auto p-6">

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 
 type GroupForm = {
@@ -18,11 +19,13 @@ type GroupForm = {
 export default function AdminGroupEdit() {
   const { slug } = useParams();
   const db = getFirestore(app);
+  const auth = getAuth(app);
   const nav = useNavigate();
   const [form, setForm] = useState<GroupForm | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [isSuper, setIsSuper] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -43,18 +46,23 @@ export default function AdminGroupEdit() {
         imageUrl: data?.imageUrl ?? "",
         calendarIds: Array.isArray((data as any)?.calendarIds) ? (data as any).calendarIds : [],
       });
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        const superSnap = await getDoc(doc(db, "admins", uid));
+        if (active) setIsSuper(superSnap.exists());
+      } else if (active) setIsSuper(false);
       setLoading(false);
     }
     load();
     return () => { active = false; };
-  }, [db, slug]);
+  }, [db, slug, auth.currentUser]);
 
   async function save() {
     if (!slug || !form) return;
     setSaving(true);
     setStatus(null);
     try {
-      const payload: GroupForm & { updatedAt: unknown } = {
+      const payload: any = {
         ...form,
         name: String(form?.name || "").trim(),
         description: (form?.description || "")?.trim() || null,
@@ -64,9 +72,13 @@ export default function AdminGroupEdit() {
         meetingTime: (form?.meetingTime || "")?.trim() || null,
         meetingFrequency: (form?.meetingFrequency || "") as GroupForm["meetingFrequency"],
         imageUrl: (form?.imageUrl || "")?.trim() || null,
-        calendarIds: (form?.calendarIds || []).map((id) => id.trim()).filter(Boolean),
         updatedAt: serverTimestamp(),
       };
+      if (isSuper) {
+        payload.calendarIds = (form?.calendarIds || []).map((id) => id.trim()).filter(Boolean);
+      } else {
+        delete payload.calendarIds;
+      }
       await setDoc(doc(db, "groups", slug), payload as any, { merge: true });
       setStatus("✅ Saved");
     } catch(e: unknown) {
@@ -177,14 +189,16 @@ export default function AdminGroupEdit() {
           />
         </Field>
 
-        <Field label="Google Calendar IDs (comma-separated)">
-          <input
-            value={form?.calendarIds?.join(", ") || ""}
-            onChange={e=>setForm(prev=>({ ...(prev as GroupForm), calendarIds: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) }))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            placeholder="id1@group.calendar.google.com,id2@group.calendar.google.com"
-          />
-        </Field>
+        {isSuper && (
+          <Field label="Google Calendar IDs (comma-separated)">
+            <input
+              value={form?.calendarIds?.join(", ") || ""}
+              onChange={e=>setForm(prev=>({ ...(prev as GroupForm), calendarIds: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) }))}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              placeholder="id1@group.calendar.google.com,id2@group.calendar.google.com"
+            />
+          </Field>
+        )}
 
         {status && <p className="text-sm text-slate-700">{status}</p>}
 

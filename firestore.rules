@@ -87,8 +87,9 @@ service cloud.firestore {
       // Group metadata is readable to signed-in users (adjust to "true" if public site)
       allow get, list: if isSignedIn() || isSuperAdmin();
 
-      // Group core write operations (admins only)
-      allow create, update, delete: if isSuperAdmin() || isGroupAdmin(groupId);
+      // Group core write operations
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || (isGroupAdmin(groupId) && !request.resource.data.diff(resource.data).changedKeys().hasAny(["calendarIds"]));
 
       // Memberships under group (UID docs)
       match /members/{memberUid} {
