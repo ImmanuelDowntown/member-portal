@@ -9,6 +9,8 @@ import {
   onSnapshot,
   doc,
   setDoc,
+  getDocs,
+  limit,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import {
@@ -27,9 +29,10 @@ type Msg = {
   createdAt?: any;
   fileUrl?: string;
   fileName?: string;
+  latestReplyAt?: number | null;
 };
 
-function MessageItem({ groupId, msg }: { groupId: string; msg: Msg }) {
+function MessageItem({ groupId, msg, lastSeen }: { groupId: string; msg: Msg; lastSeen: number }) {
   const db = getFirestore(app);
   const auth = getAuth(app);
   const storage = getStorage(app);
@@ -101,6 +104,11 @@ function MessageItem({ groupId, msg }: { groupId: string; msg: Msg }) {
       >
         {showThread ? "Hide replies" : "Reply"}
       </button>
+      {msg.latestReplyAt && msg.latestReplyAt > lastSeen && (
+        <span className="ml-2 rounded bg-yellow-200 px-1 py-0.5 text-xs text-yellow-800">
+          New Replies
+        </span>
+      )}
       {showThread && (
         <div className="mt-2 ml-4">
           {replies.length === 0 && (
@@ -153,11 +161,37 @@ export default function GroupChat({ groupId }: { groupId: string }) {
   const [file, setFile] = useState<File | null>(null);
   const storage = getStorage(app);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [lastSeen] = useState<number>(() => {
+    const stored = localStorage.getItem(`groupChatLastSeen_${groupId}`);
+    return stored ? parseInt(stored, 10) : 0;
+  });
+
+  useEffect(() => {
+    return () => {
+      localStorage.setItem(`groupChatLastSeen_${groupId}`, Date.now().toString());
+    };
+  }, [groupId]);
 
   useEffect(() => {
     const q = query(collection(db, `groups/${groupId}/messages`), orderBy("createdAt", "asc"));
-    const unsub = onSnapshot(q, (snap) => {
-      setMsgs(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+    const unsub = onSnapshot(q, async (snap) => {
+      const list: Msg[] = await Promise.all(
+        snap.docs.map(async (d) => {
+          const data = d.data() as any;
+          const repliesSnap = await getDocs(
+            query(
+              collection(db, `groups/${groupId}/messages/${d.id}/replies`),
+              orderBy("createdAt", "desc"),
+              limit(1)
+            )
+          );
+          const latestReplyAt = !repliesSnap.empty
+            ? repliesSnap.docs[0].data().createdAt?.toMillis?.()
+            : null;
+          return { id: d.id, ...data, latestReplyAt };
+        })
+      );
+      setMsgs(list);
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
     });
     return unsub;
@@ -199,7 +233,7 @@ export default function GroupChat({ groupId }: { groupId: string }) {
           <div className="p-3 text-sm text-text2">No messages yet.</div>
         )}
         {msgs.map((m) => (
-          <MessageItem key={m.id} groupId={groupId} msg={m} />
+          <MessageItem key={m.id} groupId={groupId} msg={m} lastSeen={lastSeen} />
         ))}
         <div ref={bottomRef} />
       </div>
