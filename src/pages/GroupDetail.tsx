@@ -58,27 +58,31 @@ export default function GroupDetail() {
   const [resources, setResources] = React.useState<Resource[]>([]);
   const [members, setMembers] = React.useState<Member[]>([]);
 
-  const [globalCalendarId, setGlobalCalendarId] = React.useState<string | null>(null);
+  const [globalCalendarIds, setGlobalCalendarIds] = React.useState<string[]>([]);
   React.useEffect(() => {
     getDoc(doc(db, "appSettings", "general"))
       .then((snap) => {
-        const id = snap.data()?.calendarId as string | undefined;
-        setGlobalCalendarId(id || null);
+        const data = snap.data() as { calendarIds?: string[]; calendarId?: string } | undefined;
+        if (data?.calendarIds && data.calendarIds.length) {
+          setGlobalCalendarIds(data.calendarIds);
+        } else if (data?.calendarId) {
+          setGlobalCalendarIds([data.calendarId]);
+        } else {
+          setGlobalCalendarIds([]);
+        }
       })
-      .catch(() => setGlobalCalendarId(null));
+      .catch(() => setGlobalCalendarIds([]));
   }, [db]);
 
   const calendarSrc = React.useMemo(() => {
     const ids =
       group?.calendarIds && group.calendarIds.length
         ? group.calendarIds
-        : globalCalendarId
-        ? [globalCalendarId]
-        : [];
+        : globalCalendarIds;
     if (!ids.length) return null;
     const params = ids.map((id) => `src=${encodeURIComponent(id)}`).join("&");
     return `https://calendar.google.com/calendar/embed?${params}&ctz=${encodeURIComponent(TIMEZONE)}`;
-  }, [group?.calendarIds, globalCalendarId]);
+  }, [group?.calendarIds, globalCalendarIds]);
 
 
   // Admin resource editor state

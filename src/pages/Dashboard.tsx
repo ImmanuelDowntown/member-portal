@@ -220,10 +220,18 @@ export default function Dashboard() {
     async function loadCalendar() {
       try {
         const snap = await getDoc(doc(db, "appSettings", "general"));
-        const id = snap.data()?.calendarId as string | undefined;
-        let src = id
-          ? `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(id)}`
-          : GCAL_EMBED_URL;
+        const data = snap.data() as { calendarIds?: string[]; calendarId?: string } | undefined;
+        let src: string | undefined;
+        if (data?.calendarIds && data.calendarIds.length) {
+          const params = data.calendarIds
+            .map((id) => `src=${encodeURIComponent(id)}`)
+            .join("&");
+          src = `https://calendar.google.com/calendar/embed?${params}`;
+        } else if (data?.calendarId) {
+          src = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(data.calendarId)}`;
+        } else {
+          src = GCAL_EMBED_URL;
+        }
         if (!cancelled) {
           setCalendarSrc(
             src
@@ -276,7 +284,7 @@ export default function Dashboard() {
         <ul className="mt-3 space-y-2 text-text">
           <li>• Welcome to the Community Portal. Check your groups for updates. </li>
           <li>• Notifications are now working. Open your profile and click on "Enable notification" to be kept up to speed on announcements and new resources and communications in your groups.</li>
-          <li>• Direct Messaging is now working so everyone can communicate easily in one place.</li>
+          <li>• We are working on getting Direct Messaging working so everyone can communicate easily in one place.</li>
           <li>• We are still in development. If you find bugs, or have features you'd like to see added, send Sam a DM.</li>
         </ul>
 

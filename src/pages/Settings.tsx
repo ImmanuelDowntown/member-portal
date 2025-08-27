@@ -12,7 +12,7 @@ export default function Settings() {
   const auth = React.useMemo(() => getAuth(app), []);
   const db = React.useMemo(() => getFirestore(app), []);
 
-  const [calendarId, setCalendarId] = React.useState("");
+  const [calendarIds, setCalendarIds] = React.useState("");
   const [isSuperAdmin, setIsSuperAdmin] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
 
@@ -28,7 +28,12 @@ export default function Settings() {
     getDoc(doc(db, "appSettings", "general"))
       .then((snap) => {
         if (snap.exists()) {
-          setCalendarId((snap.data()?.calendarId as string) || "");
+          const data = snap.data() as { calendarIds?: string[]; calendarId?: string } | undefined;
+          if (data?.calendarIds && data.calendarIds.length) {
+            setCalendarIds(data.calendarIds.join(", "));
+          } else if (data?.calendarId) {
+            setCalendarIds(data.calendarId);
+          }
         }
       })
       .catch(() => {});
@@ -39,7 +44,13 @@ export default function Settings() {
     try {
       await setDoc(
         doc(db, "appSettings", "general"),
-        { calendarId: calendarId.trim() },
+        (() => {
+          const ids = calendarIds
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean);
+          return { calendarIds: ids, calendarId: ids[0] || "" };
+        })(),
         { merge: true }
       );
     } catch {
@@ -58,12 +69,12 @@ export default function Settings() {
       {isSuperAdmin && (
         <div className="mt-8 max-w-lg">
           <label className="block text-sm font-medium text-text">
-            Calendar ID
+            Calendar IDs (comma-separated)
             <input
               type="text"
-              value={calendarId}
-              onChange={(e) => setCalendarId(e.target.value)}
-              placeholder="id@group.calendar.google.com"
+              value={calendarIds}
+              onChange={(e) => setCalendarIds(e.target.value)}
+              placeholder="id1@group.calendar.google.com, id2@group.calendar.google.com"
               className="mt-1 w-full rounded border border-border p-2"
             />
           </label>
