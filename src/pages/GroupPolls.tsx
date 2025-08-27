@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getAuth } from "firebase/auth";
-import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import type { Poll } from "@/types/models";
 
@@ -14,6 +14,7 @@ export default function GroupPolls() {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [question, setQuestion] = useState("");
   const [optionsText, setOptionsText] = useState("");
+  const [canCreate, setCanCreate] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -24,8 +25,28 @@ export default function GroupPolls() {
     return () => unsub();
   }, [db, slug]);
 
+  useEffect(() => {
+    let ignore = false;
+    async function checkAdmin() {
+      if (!slug || !uid) return;
+      try {
+        const [superSnap, groupSnap] = await Promise.all([
+          getDoc(doc(db, "admins", uid)),
+          getDoc(doc(db, `groups/${slug}/groupAdmins/${uid}`)),
+        ]);
+        if (!ignore) setCanCreate(superSnap.exists() || groupSnap.exists());
+      } catch {
+        if (!ignore) setCanCreate(false);
+      }
+    }
+    void checkAdmin();
+    return () => {
+      ignore = true;
+    };
+  }, [db, slug, uid]);
+
   async function createPoll() {
-    if (!question.trim()) return;
+    if (!canCreate || !question.trim()) return;
     const opts = optionsText
       .split("\n")
       .map((t) => t.trim())
@@ -63,31 +84,33 @@ export default function GroupPolls() {
           </Link>
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void createPoll();
-          }}
-          className="mt-6 grid gap-2 sm:grid-cols-6"
-        >
-          <input
-            className="sm:col-span-6 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
-            placeholder="Poll question"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-          />
-          <textarea
-            className="sm:col-span-6 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
-            placeholder="Options, one per line"
-            value={optionsText}
-            onChange={(e) => setOptionsText(e.target.value)}
-          />
-          <div className="sm:col-span-6">
-            <button className="rounded-lg bg-[#919FAA] hover:opacity-90 px-4 py-2 text-white text-sm">
-              Create poll
-            </button>
-          </div>
-        </form>
+        {canCreate && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void createPoll();
+            }}
+            className="mt-6 grid gap-2 sm:grid-cols-6"
+          >
+            <input
+              className="sm:col-span-6 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+              placeholder="Poll question"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+            />
+            <textarea
+              className="sm:col-span-6 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+              placeholder="Options, one per line"
+              value={optionsText}
+              onChange={(e) => setOptionsText(e.target.value)}
+            />
+            <div className="sm:col-span-6">
+              <button className="rounded-lg bg-[#919FAA] hover:opacity-90 px-4 py-2 text-white text-sm">
+                Create poll
+              </button>
+            </div>
+          </form>
+        )}
 
         <div className="mt-8 space-y-6">
           {polls.map((p) => (
