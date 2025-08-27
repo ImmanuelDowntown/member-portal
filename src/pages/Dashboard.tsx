@@ -276,7 +276,7 @@ export default function Dashboard() {
         <ul className="mt-3 space-y-2 text-text">
           <li>• Welcome to the Community Portal. Check your groups for updates. </li>
           <li>• Notifications are now working. Open your profile and click on "Enable notification" to be kept up to speed on announcements and new resources and communications in your groups.</li>
-          <li>• We are working on getting Direct Messaging working so everyone can communicate easily in one place.</li>
+          <li>• Direct Messaging is now working so everyone can communicate easily in one place.</li>
           <li>• We are still in development. If you find bugs, or have features you'd like to see added, send Sam a DM.</li>
         </ul>
 
