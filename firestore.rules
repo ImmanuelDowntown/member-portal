@@ -125,6 +125,16 @@ service cloud.firestore {
         allow create, update, delete: if isSignedIn() && (isGroupAdmin(groupId) || isSuperAdmin());
       }
 
+      // Group polls
+      match /polls/{pollId} {
+        // Members, group admins, or super admins can read polls
+        allow get, list: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+        // Only group admins or super admins may create or delete polls
+        allow create, delete: if isSignedIn() && (isGroupAdmin(groupId) || isSuperAdmin());
+        // Members may vote (update options)
+        allow update: if isSignedIn() && (isMemberOf(groupId) || isGroupAdmin(groupId) || isSuperAdmin());
+      }
+
       // Group messages (feed)
       match /messages/{messageId} {
         // Members, group admins, or super admins can read & create
