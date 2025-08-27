@@ -24,3 +24,15 @@ export type EventItem = {
   startAt?: number // millis
   location?: string
 }
+
+export type PollOption = {
+  id: string
+  label: string
+  voters: string[]
+}
+
+export type Poll = {
+  id: string
+  question: string
+  options: PollOption[]
+}

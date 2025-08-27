@@ -8,6 +8,7 @@ import GroupAdminRoute from "@/components/GroupAdminRoute";
 // Pages
 import GroupsExplore from "@/pages/GroupsExplore";
 import GroupDetail from "@/pages/GroupDetail";
+import GroupPolls from "@/pages/GroupPolls";
 
 // Headers
 import HeaderLogoOnly from "@/components/Header";
@@ -93,6 +94,7 @@ export default function App() {
             {/* Groups Explore + Detail */}
             <Route path="/groups/explore" element={<AuthRoute><OnboardRoute><GroupsExplore /></OnboardRoute></AuthRoute>} />
             <Route path="/groups/:slug" element={<AuthRoute><OnboardRoute><GroupDetail /></OnboardRoute></AuthRoute>} />
+            <Route path="/groups/:slug/polls" element={<AuthRoute><OnboardRoute><GroupPolls /></OnboardRoute></AuthRoute>} />
 
 
             {/* Admin routes */}

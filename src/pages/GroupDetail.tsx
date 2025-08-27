@@ -261,8 +261,15 @@ export default function GroupDetail() {
               Edit settings
             </Link>
           )}
-
             {group.description && <p className="text-sm text-text2 mt-2">{group.description}</p>}
+            <div className="mt-2">
+              <Link
+                to={`/groups/${slug}/polls`}
+                className="inline-flex rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted"
+              >
+                View polls
+              </Link>
+            </div>
           </div>
           {/* Mute toggle for current user */}
           {me && (
