@@ -105,9 +105,13 @@ function MessageItem({ groupId, msg, lastSeen }: { groupId: string; msg: Msg; la
         {showThread ? "Hide replies" : "Reply"}
       </button>
       {msg.latestReplyAt && msg.latestReplyAt > lastSeen && (
-        <span className="ml-2 rounded bg-yellow-200 px-1 py-0.5 text-xs text-yellow-800">
+        <button
+          type="button"
+          onClick={() => setShowThread(true)}
+          className="ml-2 rounded bg-yellow-200 px-1 py-0.5 text-xs text-yellow-800 cursor-pointer hover:underline"
+        >
           New Replies
-        </span>
+        </button>
       )}
       {showThread && (
         <div className="mt-2 ml-4">
