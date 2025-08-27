@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getAuth } from "firebase/auth";
-import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, getDoc, deleteDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import type { Poll } from "@/types/models";
 
@@ -14,7 +14,7 @@ export default function GroupPolls() {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [question, setQuestion] = useState("");
   const [optionsText, setOptionsText] = useState("");
-  const [canCreate, setCanCreate] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -34,9 +34,9 @@ export default function GroupPolls() {
           getDoc(doc(db, "admins", uid)),
           getDoc(doc(db, `groups/${slug}/groupAdmins/${uid}`)),
         ]);
-        if (!ignore) setCanCreate(superSnap.exists() || groupSnap.exists());
+        if (!ignore) setIsAdmin(superSnap.exists() || groupSnap.exists());
       } catch {
-        if (!ignore) setCanCreate(false);
+        if (!ignore) setIsAdmin(false);
       }
     }
     void checkAdmin();
@@ -46,7 +46,7 @@ export default function GroupPolls() {
   }, [db, slug, uid]);
 
   async function createPoll() {
-    if (!canCreate || !question.trim()) return;
+    if (!isAdmin || !question.trim()) return;
     const opts = optionsText
       .split("\n")
       .map((t) => t.trim())
@@ -74,6 +74,13 @@ export default function GroupPolls() {
     await updateDoc(doc(db, `groups/${slug}/polls/${pollId}`), { options });
   }
 
+  async function deletePoll(pollId: string) {
+    if (!isAdmin) return;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm("Delete this poll?")) return;
+    await deleteDoc(doc(db, `groups/${slug}/polls/${pollId}`));
+  }
+
   return (
     <div className="container py-8 md:py-12">
       <div className="max-w-3xl mx-auto">
@@ -84,7 +91,7 @@ export default function GroupPolls() {
           </Link>
         </div>
 
-        {canCreate && (
+        {isAdmin && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -115,7 +122,17 @@ export default function GroupPolls() {
         <div className="mt-8 space-y-6">
           {polls.map((p) => (
             <div key={p.id} className="rounded-lg border border-border bg-card p-4">
-              <h2 className="font-medium text-accent">{p.question}</h2>
+              <div className="flex items-start justify-between">
+                <h2 className="font-medium text-accent">{p.question}</h2>
+                {isAdmin && (
+                  <button
+                    onClick={() => void deletePoll(p.id)}
+                    className="text-xs text-red-500 hover:underline"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
               <ul className="mt-3 space-y-2">
                 {p.options.map((o) => (
                   <li key={o.id}>
