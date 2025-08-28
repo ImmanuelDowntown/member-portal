@@ -1,7 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 
 function Loader({ label = "Checking admin access…" }: { label?: string }) {
@@ -33,7 +33,13 @@ export default function AdminRoute({ children }: { children: React.ReactNode }) 
       }
       try {
         const snap = await getDoc(doc(db, "users", user.uid));
-        setAllowed((snap.data() as any)?.isSuperAdmin === true);
+        const isSuper = (snap.data() as any)?.isSuperAdmin === true;
+        if (isSuper) {
+          setAllowed(true);
+        } else {
+          const anySuper = await getDocs(query(collection(db, "users"), where("isSuperAdmin", "==", true), limit(1)));
+          setAllowed(anySuper.empty);
+        }
       } catch (e: any) {
         setError(e?.message || String(e));
         setAllowed(false);
