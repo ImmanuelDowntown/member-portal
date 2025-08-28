@@ -21,3 +21,12 @@ firebase deploy --only functions
 
 ## Admin claim
 Use Admin SDK to set { admin: true } for an admin user, then reauth.
+
+## Grant Super Admin
+To manually promote a user to super admin, run:
+
+```
+npm --prefix functions run grant-superadmin <UID>
+```
+
+Replace `<UID>` with the target user's UID (for example `N86oGmSc8oVnHHeHm2Nlxi2L8Wb2`).
