@@ -491,8 +491,7 @@ export default function DMDock() {
       <button
         type="button"
         onClick={() => { setOpen((v) => !v); if (!open) setView("list"); }}
-        className={`fixed bottom-4 right-4 z-[1100] shadow-lg rounded-full px-4 py-2 text-white text-sm md:text-[13px] ${open ? "hidden md:inline-flex" : "inline-flex"}`}
-        style={{ backgroundColor: "#919FAA" }}
+        className={`fixed bottom-4 right-4 z-[1100] shadow-lg rounded-full px-4 py-2 text-white text-sm md:text-[13px] bg-accent ${open ? "hidden md:inline-flex" : "inline-flex"}`}
         aria-label={open ? "Close direct messages" : "Open direct messages"}
       >
         {open ? "Close DMs" : "Open DMs"}
@@ -634,8 +633,7 @@ export default function DMDock() {
                     <button
                       type="button"
                       onClick={() => void send()}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full w-8 h-8 flex items-center justify-center text-white text-lg hover:opacity-90 disabled:opacity-50"
-                      style={{ backgroundColor: "#919FAA" }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full w-8 h-8 flex items-center justify-center bg-accent text-white text-lg hover:opacity-90 disabled:opacity-50"
                       disabled={!text.trim()}
                     >
                       ↑
@@ -677,7 +675,7 @@ export default function DMDock() {
                               <input
                                 id={`sel-${m.uid}`}
                                 type="checkbox"
-                                className="h-4 w-4 accent-[#919FAA]"
+                                className="h-4 w-4 accent-accent"
                                 checked={!!sel[m.uid]}
                                 onChange={(e) => setSel((prev) => ({ ...prev, [m.uid]: e.target.checked }))}
                               />
@@ -714,8 +712,7 @@ export default function DMDock() {
                     type="button"
                     onClick={() => void sendCompose()}
                     disabled={composeBusy || !composeText.trim() || !Object.values(sel).some(Boolean)}
-                    className="rounded-lg px-3 py-2 text-white text-sm hover:opacity-90 disabled:opacity-60"
-                    style={{ backgroundColor: "#919FAA" }}
+                    className="rounded-lg px-3 py-2 bg-accent text-white text-sm hover:opacity-90 disabled:opacity-60"
                   >
                     {composeBusy ? "Sending…" : "Send"}
                   </button>
