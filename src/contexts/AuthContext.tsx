@@ -16,6 +16,7 @@ import {
   getDocs,
   query,
   where,
+  onSnapshot,
 } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 
@@ -75,6 +76,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     return () => unsub();
   }, [auth]);
+
+  useEffect(() => {
+    if (!user) return;
+    const uid = user.uid;
+    const userUnsub = onSnapshot(doc(db, "users", uid), () => computeAdmin(user));
+    const gaq = query(collectionGroup(db, "groupAdmins"), where("uid", "==", uid));
+    const groupUnsub = onSnapshot(gaq, () => computeAdmin(user));
+    return () => {
+      userUnsub();
+      groupUnsub();
+    };
+  }, [user, db]);
 
   const login = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
