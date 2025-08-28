@@ -48,8 +48,8 @@ export default function AdminGroupEdit() {
       });
       const uid = auth.currentUser?.uid;
       if (uid) {
-        const superSnap = await getDoc(doc(db, "admins", uid));
-        if (active) setIsSuper(superSnap.exists());
+        const superSnap = await getDoc(doc(db, "users", uid));
+        if (active) setIsSuper((superSnap.data() as any)?.isSuperAdmin === true);
       } else if (active) setIsSuper(false);
       setLoading(false);
     }

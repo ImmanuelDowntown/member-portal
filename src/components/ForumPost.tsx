@@ -34,8 +34,8 @@ export default function ForumPost({ threadId, post }: ForumPostProps) {
       setIsSuper(false);
       return;
     }
-    const d = doc(db, "admins", user.uid);
-    const unsub = onSnapshot(d, (snap) => setIsSuper(snap.exists()));
+    const d = doc(db, "users", user.uid);
+    const unsub = onSnapshot(d, (snap) => setIsSuper((snap.data() as any)?.isSuperAdmin === true));
     return () => unsub();
   }, [user?.uid]);
 

@@ -11,7 +11,7 @@ service cloud.firestore {
       return request.auth.uid;
     }
     function isSuperAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(uid()));
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(uid())).data.isSuperAdmin == true;
     }
     function isApproved() {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(uid())).data.isCommunityApproved == true;
@@ -245,13 +245,6 @@ service cloud.firestore {
       allow create, update, delete: if isSuperAdmin();
     }
 
-
-    // ---------- Super admin registry ----------
-    match /admins/{adminUid} {
-      allow get: if isSignedIn() && (adminUid == uid() || isSuperAdmin() || isApproved());
-      allow list: if isSignedIn() && (isSuperAdmin() || isApproved());
-      allow write: if isSuperAdmin();
-    }
 
     // ---------- App settings ----------
     // Stores global application configuration such as the calendar ID.

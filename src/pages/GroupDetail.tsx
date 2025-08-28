@@ -133,7 +133,8 @@ export default function GroupDetail() {
         const u = auth.currentUser;
         if (u) {
           const uid = u.uid;
-          const isSuper = await safeExists(doc(db, "admins", uid));
+          const superSnap = await getDoc(doc(db, "users", uid));
+          const isSuper = (superSnap.data() as any)?.isSuperAdmin === true;
           if (isSuper) {
             ok = true; admin = true;
           } else {

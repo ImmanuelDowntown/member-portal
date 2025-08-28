@@ -29,9 +29,9 @@ export default function GroupAdminPanel({ groupId }: Props) {
         return;
       }
       // super admin?
-      const superRef = doc(db, "admins", uid);
+      const superRef = doc(db, "users", uid);
       const superSnap = await getDoc(superRef);
-      const superYes = superSnap.exists();
+      const superYes = (superSnap.data() as any)?.isSuperAdmin === true;
       setIsSuper(superYes);
       if (superYes) {
         setIsAllowed(true);

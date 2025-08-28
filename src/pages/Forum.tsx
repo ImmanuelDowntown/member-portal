@@ -72,8 +72,8 @@ export default function Forum() {
   useEffect(() => {
     let unsub: (() => void) | undefined;
     if (user?.uid) {
-      const d = doc(db, "admins", user.uid);
-      unsub = onSnapshot(d, (snap) => setIsSuper(snap.exists()));
+      const d = doc(db, "users", user.uid);
+      unsub = onSnapshot(d, (snap) => setIsSuper((snap.data() as any)?.isSuperAdmin === true));
     } else {
       setIsSuper(false);
     }

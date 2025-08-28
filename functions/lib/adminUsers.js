@@ -1,7 +1,7 @@
 "use strict";
 // functions/src/adminUsers.ts
 // Super Admin-only actions: inactivate/reactivate users and delete users.
-// Uses Firebase Admin SDK; callable functions require caller to be a super admin (doc exists at /admins/{uid}).
+// Uses Firebase Admin SDK; callable functions require caller to be a super admin (users/{uid}.isSuperAdmin == true).
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -48,8 +48,8 @@ async function assertSuperAdmin(callerUid) {
     if (!callerUid) {
         throw new https_1.HttpsError("unauthenticated", "Must be authenticated.");
     }
-    const snap = await db.doc(`admins/${callerUid}`).get();
-    if (!snap.exists) {
+    const snap = await db.doc(`users/${callerUid}`).get();
+    if (snap.data()?.isSuperAdmin !== true) {
         throw new https_1.HttpsError("permission-denied", "Super admin privileges required.");
     }
 }
@@ -167,10 +167,6 @@ exports.deleteUserAccount = (0, https_1.onCall)({ region: "us-central1", timeout
         ...groupAdminsSnap.docs,
         ...legacyAdminsSnap.docs,
     ]);
-    await db
-        .doc(`admins/${targetUid}`)
-        .delete()
-        .catch((err) => firebase_functions_1.logger.error("admin doc delete failed", err));
     // Optionally mark or delete the user doc
     const userRef = db.doc(`users/${targetUid}`);
     let userDocDeleted = false;

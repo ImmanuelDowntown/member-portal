@@ -25,8 +25,8 @@ export default function GroupAdminRoute({ children }: { children: React.ReactNod
       }
       try {
         // super admin?
-        const superSnap = await getDoc(doc(db, "admins", user.uid));
-        if (superSnap.exists()) {
+        const superSnap = await getDoc(doc(db, "users", user.uid));
+        if ((superSnap.data() as any)?.isSuperAdmin === true) {
           setAllowed(true);
           return;
         }

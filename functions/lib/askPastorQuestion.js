@@ -56,7 +56,6 @@ exports.askPastorQuestion = functions.onCall({ region: "us-central1" }, async (r
         displayName =
             userSnap.data()?.displayName ||
                 userSnap.data()?.name ||
-                (await db.doc(`admins/${uid}`).get()).data()?.displayName ||
                 "Member";
     }
     catch {

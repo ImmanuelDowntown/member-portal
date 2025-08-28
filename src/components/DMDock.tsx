@@ -69,8 +69,8 @@ export default function DMDock() {
           setMeApproved(false);
         }
         try {
-          const admin = await getDoc(doc(db, "admins", u.uid));
-          setIsSuper(admin.exists());
+          const admin = await getDoc(doc(db, "users", u.uid));
+          setIsSuper((admin.data() as any)?.isSuperAdmin === true);
         } catch {
           setIsSuper(false);
         }
@@ -115,13 +115,8 @@ export default function DMDock() {
     }
     try {
       // Try users collection
-      let snap = await getDoc(doc(db, "users", uid));
-      let nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
-      if (!nm) {
-        // Fallback to admins collection
-        snap = await getDoc(doc(db, "admins", uid));
-        nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
-      }
+      const snap = await getDoc(doc(db, "users", uid));
+      const nm = (snap.data()?.displayName as string) || (snap.data()?.name as string);
       if (nm) {
         nameCache.current[uid] = nm;
         if (pairId) {
@@ -194,7 +189,7 @@ export default function DMDock() {
           members.push({ uid: d.id, displayName, email, search });
         });
         try {
-          const adminSnap = await getDocs(collection(db, "admins"));
+          const adminSnap = await getDocs(query(collection(db, "users"), where("isSuperAdmin", "==", true)));
           adminSnap.docs.forEach((d) => {
             if (d.id === me || seen[d.id]) return;
             const data = d.data() as DocumentData;
@@ -491,7 +486,7 @@ export default function DMDock() {
       <button
         type="button"
         onClick={() => { setOpen((v) => !v); if (!open) setView("list"); }}
-        className={`fixed bottom-4 right-4 z-[1100] shadow-lg rounded-full px-4 py-2 text-white text-sm md:text-[13px] bg-accent ${open ? "hidden md:inline-flex" : "inline-flex"}`}
+        className={`fixed bottom-4 right-4 z-[1100] shadow-lg rounded-full px-4 py-2 text-bg text-sm md:text-[13px] bg-accent ${open ? "hidden md:inline-flex" : "inline-flex"}`}
         aria-label={open ? "Close direct messages" : "Open direct messages"}
       >
         {open ? "Close DMs" : "Open DMs"}
@@ -502,16 +497,16 @@ export default function DMDock() {
         <div
           className="fixed z-[1000] bottom-0 inset-x-0 w-full h-[85vh] rounded-t-2xl
                      md:bottom-16 md:left-1/2 md:inset-x-auto md:w-full md:max-w-[780px] md:max-h-[480px] md:rounded-xl md:-translate-x-1/2 md:transform
-                     border border-slate-800 bg-slate-900 text-white shadow-xl overflow-hidden
+                    border border-border bg-surface text-text shadow-xl overflow-hidden
                      flex md:flex-row flex-col"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           {/* Mobile header with Close and New/Back */}
-          <div className="md:hidden flex items-center justify-between px-3 py-2 border-b border-slate-800">
+          <div className="md:hidden flex items-center justify-between px-3 py-2 border-b border-border">
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-xs rounded-md border border-slate-700 px-2 py-1"
+              className="text-xs rounded-md border border-border px-2 py-1"
               aria-label="Close direct messages"
             >
               Close
@@ -521,7 +516,7 @@ export default function DMDock() {
               <button
                 type="button"
                 onClick={startCompose}
-                className="text-xs rounded-md border border-slate-700 px-2 py-1"
+                className="text-xs rounded-md border border-border px-2 py-1"
                 aria-label="New message"
               >
                 New
@@ -530,7 +525,7 @@ export default function DMDock() {
               <button
                 type="button"
                 onClick={() => setView("list")}
-                className="text-xs rounded-md border border-slate-700 px-2 py-1"
+                className="text-xs rounded-md border border-border px-2 py-1"
                 aria-label="Back to conversations"
               >
                 Back
@@ -540,20 +535,20 @@ export default function DMDock() {
 
           {/* Left: Threads list (hidden on mobile while composing/chatting) */}
           {view === "list" && (
-            <div className="md:w-64 md:border-r md:border-slate-800 h-[40vh] md:h-full overflow-auto">
+            <div className="md:w-64 md:border-r md:border-border h-[40vh] md:h-full overflow-auto">
               <div className="hidden md:flex px-3 py-2 text-sm font-semibold items-center justify-between">
                 <span>Conversations</span>
                 <button
                   type="button"
                   onClick={startCompose}
-                  className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
+                  className="text-xs rounded-md border border-border px-2 py-1 hover:bg-surface"
                   title="New message"
                 >
                   New
                 </button>
                 </div>
               {threads.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-slate-300">No conversations yet.</div>
+                <div className="px-3 py-2 text-sm text-text">No conversations yet.</div>
               ) : (
                 <ul>
                   {threads.map((t) => (
@@ -561,10 +556,10 @@ export default function DMDock() {
                       <button
                         type="button"
                         onClick={() => { setActive(t); setView("chat"); }}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 ${active && active.id === t.id ? "bg-slate-800" : ""}`}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-surface ${active && active.id === t.id ? "bg-surface" : ""}`}
                       >
                         <div className="font-medium truncate">{t.otherName || t.otherUid}</div>
-                        <div className="text-xs text-slate-300 truncate">{t.lastText || "…"}</div>
+                        <div className="text-xs text-text truncate">{t.lastText || "…"}</div>
                       </button>
                     </li>
                   ))}
@@ -577,11 +572,11 @@ export default function DMDock() {
           <div className="flex-1 h-full flex flex-col">
             {view === "chat" && active && (
               <>
-                <div className="px-3 py-2 border-b border-slate-800 flex items-center gap-2">
+                <div className="px-3 py-2 border-b border-border flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => { setActive(null); setView("list"); }}
-                    className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
+                    className="text-xs rounded-md border border-border px-2 py-1 hover:bg-surface"
                     aria-label="Back to conversations"
                   >
                     ← Back
@@ -595,7 +590,7 @@ export default function DMDock() {
                     return (
                       <div
                         key={m.id}
-                        className={`max-w-[85%] md:max-w-[80%] rounded-lg px-3 py-2 text-sm relative ${mine ? "ml-auto border border-slate-700" : "bg-slate-800"}`}
+                        className={`max-w-[85%] md:max-w-[80%] rounded-lg px-3 py-2 text-sm relative ${mine ? "ml-auto border border-border" : "bg-surface"}`}
                       >
                         <div className="text-xs opacity-70 mb-0.5">{m.displayName || m.from}</div>
                         <div>{m.text}</div>
@@ -603,7 +598,7 @@ export default function DMDock() {
                           <button
                             type="button"
                             onClick={() => void deleteMessage(m.id)}
-                            className="absolute -top-2 -right-2 text-[10px] rounded-full border border-slate-700 bg-slate-900 px-1.5 py-0.5 hover:bg-slate-800"
+                            className="absolute -top-2 -right-2 text-[10px] rounded-full border border-border bg-bg px-1.5 py-0.5 hover:bg-surface"
                             title="Delete message"
                           >
                             ×
@@ -612,16 +607,16 @@ export default function DMDock() {
                       </div>
                     );
                   })}
-                  {msgs.length === 0 && <div className="text-sm text-slate-300">No messages in this conversation yet.</div>}
+                  {msgs.length === 0 && <div className="text-sm text-text">No messages in this conversation yet.</div>}
                 </div>
 
-                <div className="border-t border-slate-800 p-2">
+                <div className="border-t border-border p-2">
                   <div className="relative flex">
                     <textarea
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       placeholder="Write a message…"
-                      className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-base outline-none text-white placeholder:text-slate-400 h-10 md:h-auto md:min-h-[40px] max-h-28 pr-10"
+                      className="flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-base outline-none text-text placeholder:text-meta h-10 md:h-auto md:min-h-[40px] max-h-28 pr-10"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
@@ -633,7 +628,7 @@ export default function DMDock() {
                     <button
                       type="button"
                       onClick={() => void send()}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full w-8 h-8 flex items-center justify-center bg-accent text-white text-lg hover:opacity-90 disabled:opacity-50"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full w-8 h-8 flex items-center justify-center bg-accent text-bg text-lg hover:opacity-90 disabled:opacity-50"
                       disabled={!text.trim()}
                     >
                       ↑
@@ -645,11 +640,11 @@ export default function DMDock() {
 
             {view === "compose" && (
               <>
-                <div className="px-3 py-2 border-b border-slate-800 flex items-center gap-2">
+                <div className="px-3 py-2 border-b border-border flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setView("list")}
-                    className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:bg-slate-800"
+                    className="text-xs rounded-md border border-border px-2 py-1 hover:bg-surface"
                   >
                     ← Back
                   </button>
@@ -658,16 +653,16 @@ export default function DMDock() {
 
                 <div className="flex-1 p-3 grid grid-cols-1 md:grid-cols-5 gap-3 overflow-auto">
                   <div className="md:col-span-2">
-                    <label className="text-xs text-slate-300">Recipients</label>
+                    <label className="text-xs text-text">Recipients</label>
                     <input
                       value={filter}
                       onChange={(e) => setFilter(e.target.value)}
                       placeholder="Search users…"
-                      className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm outline-none"
+                      className="mt-1 w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm outline-none"
                     />
-                    <div className="mt-2 h-56 md:h-48 overflow-auto rounded-lg border border-slate-700">
+                    <div className="mt-2 h-56 md:h-48 overflow-auto rounded-lg border border-border">
                       {filteredMembers.length === 0 ? (
-                        <div className="px-2 py-2 text-xs text-slate-400">No matching users.</div>
+                        <div className="px-2 py-2 text-xs text-meta">No matching users.</div>
                       ) : (
                         <ul className="p-2 space-y-1">
                           {filteredMembers.map((m) => (
@@ -690,21 +685,21 @@ export default function DMDock() {
                   </div>
 
                   <div className="md:col-span-3 flex flex-col">
-                    <label className="text-xs text-slate-300">Message</label>
+                    <label className="text-xs text-text">Message</label>
                     <textarea
                       value={composeText}
                       onChange={(e) => setComposeText(e.target.value)}
                       placeholder="Write your message…"
-                      className="mt-1 flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm outline-none h-40 md:h-auto"
+                      className="mt-1 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none h-40 md:h-auto"
                     />
                   </div>
                 </div>
 
-                <div className="border-t border-slate-800 p-2 flex items-center justify-end gap-2">
+                <div className="border-t border-border p-2 flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setView("list")}
-                    className="rounded-lg border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800"
+                    className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-surface"
                   >
                     Cancel
                   </button>
@@ -712,7 +707,7 @@ export default function DMDock() {
                     type="button"
                     onClick={() => void sendCompose()}
                     disabled={composeBusy || !composeText.trim() || !Object.values(sel).some(Boolean)}
-                    className="rounded-lg px-3 py-2 bg-accent text-white text-sm hover:opacity-90 disabled:opacity-60"
+                    className="rounded-lg px-3 py-2 bg-accent text-bg text-sm hover:opacity-90 disabled:opacity-60"
                   >
                     {composeBusy ? "Sending…" : "Send"}
                   </button>
@@ -721,7 +716,7 @@ export default function DMDock() {
             )}
 
             {view === "list" && !active && (
-              <div className="hidden md:grid place-items-center flex-1 text-sm text-slate-300">
+              <div className="hidden md:grid place-items-center flex-1 text-sm text-text">
                 Select a conversation or click <b className="mx-1">New</b> to start one.
               </div>
             )}

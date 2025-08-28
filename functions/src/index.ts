@@ -23,7 +23,7 @@ import * as functionsV1 from "firebase-functions/v1";
 /**
  * grantGroupAdminByEmail
  * Callable used by the Admin UI to promote a user to group admin by email.
- * Requires the caller to be a Super Admin (`/admins/{uid}` exists).
+ * Requires the caller to be a Super Admin (`users/{uid}.isSuperAdmin == true`).
  * Side effects:
  *  - creates/merges doc at groups/{groupId}/admins/{targetUid}
  *  - appends a groupEvents entry (membership_approved) for audit
@@ -38,7 +38,7 @@ export const grantGroupAdminByEmail = functionsV1
     const db = admin.firestore();
 
     // Only Super Admins may call
-    const isSuper = (await db.doc(`admins/${callerUid}`).get()).exists;
+    const isSuper = (await db.doc(`users/${callerUid}`).get()).data()?.isSuperAdmin === true;
     if (!isSuper) {
       throw new functionsV1.https.HttpsError("permission-denied", "Only Super Admins can grant group admins.");
     }
@@ -103,7 +103,7 @@ export const approveMembershipRequest = functionsV1
       throw new functionsV1.https.HttpsError("invalid-argument", "groupId and uid are required.");
     }
 
-    const isSuper = (await db.doc(`admins/${callerUid}`).get()).exists;
+    const isSuper = (await db.doc(`users/${callerUid}`).get()).data()?.isSuperAdmin === true;
     const isGroupAdmin = (await db.doc(`groups/${groupId}/groupAdmins/${callerUid}`).get()).exists;
     if (!isSuper && !isGroupAdmin) {
       throw new functionsV1.https.HttpsError("permission-denied", "Only group admins or super admins may approve requests.");

@@ -57,8 +57,8 @@ export default function AdminGroupMembers() {
         const u = auth.currentUser;
         if (u) {
           const uid = u.uid;
-          const superSnap = await getDoc(doc(db, "admins", uid));
-          if (superSnap.exists()) {
+          const superSnap = await getDoc(doc(db, "users", uid));
+          if ((superSnap.data() as any)?.isSuperAdmin === true) {
             setCanEdit(true);
           } else {
             const gaSnap = await getDoc(doc(db, `groups/${groupId}/groupAdmins/${uid}`));

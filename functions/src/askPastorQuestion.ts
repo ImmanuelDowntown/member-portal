@@ -26,7 +26,6 @@ export const askPastorQuestion = functions.onCall(
       displayName =
         (userSnap.data()?.displayName as string) ||
         (userSnap.data()?.name as string) ||
-        (await db.doc(`admins/${uid}`).get()).data()?.displayName ||
         "Member";
     } catch {
       // ignore

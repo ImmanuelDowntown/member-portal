@@ -11,7 +11,7 @@ function Loader({ label = "Checking admin access…" }: { label?: string }) {
 /**
  * AdminRoute
  * - Waits for Firebase Auth to initialize
- * - Reads /admins/{uid} to confirm super admin
+ * - Reads users/{uid}.isSuperAdmin to confirm super admin
  * - Renders children if allowed
  * - Redirects to /login if not signed in
  * - Shows a clear message if access is denied (instead of silently bouncing)
@@ -32,8 +32,8 @@ export default function AdminRoute({ children }: { children: React.ReactNode }) 
         return;
       }
       try {
-        const snap = await getDoc(doc(db, "admins", user.uid));
-        setAllowed(snap.exists());
+        const snap = await getDoc(doc(db, "users", user.uid));
+        setAllowed((snap.data() as any)?.isSuperAdmin === true);
       } catch (e: any) {
         setError(e?.message || String(e));
         setAllowed(false);

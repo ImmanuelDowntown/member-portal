@@ -35,8 +35,8 @@ export default function AdminGroupNew() {
     async function check() {
       const uid = auth.currentUser?.uid;
       if (!uid) { setIsSuper(false); return; }
-      const snap = await getDoc(doc(db, "admins", uid));
-      setIsSuper(snap.exists());
+      const snap = await getDoc(doc(db, "users", uid));
+      setIsSuper((snap.data() as any)?.isSuperAdmin === true);
     }
     check();
   }, [auth.currentUser, db]);

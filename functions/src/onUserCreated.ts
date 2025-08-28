@@ -11,7 +11,10 @@ export const onUserCreated = functions.firestore.onDocumentCreated("users/{uid}"
   const data = event.data?.data() as { displayName?: string; email?: string } | undefined;
   const name = data?.displayName || data?.email || uid;
   try {
-    const adminsSnap = await db.collection("admins").get();
+    const adminsSnap = await db
+      .collection("users")
+      .where("isSuperAdmin", "==", true)
+      .get();
     const batch = db.batch();
     adminsSnap.forEach((docSnap) => {
       const adminId = docSnap.id;

@@ -65,9 +65,9 @@ export default function GroupResources({ groupId }: { groupId: string }) {
         setCanEdit(false);
         return;
       }
-      const superDoc = await getDoc(doc(db, "admins", uid));
+      const superDoc = await getDoc(doc(db, "users", uid));
       if (!active) return;
-      if (superDoc.exists()) {
+      if ((superDoc.data() as any)?.isSuperAdmin === true) {
         setCanEdit(true);
         return;
       }

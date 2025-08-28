@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, getDocs, setDoc, doc, serverTimestamp, query, where, deleteField } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 
-type AdminEntry = { uid: string; createdAt?: any; createdBy?: string };
+type AdminEntry = { uid: string; displayName?: string; email?: string; superAdminAddedBy?: string };
 
 export default function SuperAdmins() {
   const db = getFirestore(app);
@@ -15,7 +15,7 @@ export default function SuperAdmins() {
 
   async function load() {
     setLoading(true);
-    const snap = await getDocs(collection(db, "admins"));
+    const snap = await getDocs(query(collection(db, "users"), where("isSuperAdmin", "==", true)));
     const rows: AdminEntry[] = [];
     snap.forEach(d => rows.push({ uid: d.id, ...(d.data() as any) }));
     rows.sort((a, b) => a.uid.localeCompare(b.uid));
@@ -30,9 +30,10 @@ export default function SuperAdmins() {
     if (!value) return;
     setBusy("add");
     try {
-      await setDoc(doc(db, "admins", value), {
-        createdAt: serverTimestamp(),
-        createdBy: auth.currentUser?.uid || "unknown"
+      await setDoc(doc(db, "users", value), {
+        isSuperAdmin: true,
+        superAdminAddedAt: serverTimestamp(),
+        superAdminAddedBy: auth.currentUser?.uid || "unknown"
       }, { merge: true });
       setUid("");
       await load();
@@ -44,7 +45,11 @@ export default function SuperAdmins() {
   async function remove(targetUid: string) {
     setBusy(targetUid);
     try {
-      await deleteDoc(doc(db, "admins", targetUid));
+      await setDoc(doc(db, "users", targetUid), {
+        isSuperAdmin: false,
+        superAdminAddedAt: deleteField(),
+        superAdminAddedBy: deleteField()
+      }, { merge: true });
       await load();
     } finally {
       setBusy("");
@@ -86,7 +91,7 @@ export default function SuperAdmins() {
               <li key={a.uid} className="p-4 flex items-center justify-between">
                 <div>
                   <div className="font-medium text-slate-900">{a.uid}</div>
-                  <div className="text-xs text-slate-500">Created by: {a.createdBy || "—"}</div>
+                  <div className="text-xs text-slate-500">Added by: {a.superAdminAddedBy || "—"}</div>
                 </div>
                 <button
                   onClick={() => remove(a.uid)}

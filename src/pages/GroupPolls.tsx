@@ -31,10 +31,10 @@ export default function GroupPolls() {
       if (!slug || !uid) return;
       try {
         const [superSnap, groupSnap] = await Promise.all([
-          getDoc(doc(db, "admins", uid)),
+          getDoc(doc(db, "users", uid)),
           getDoc(doc(db, `groups/${slug}/groupAdmins/${uid}`)),
         ]);
-        if (!ignore) setIsAdmin(superSnap.exists() || groupSnap.exists());
+        if (!ignore) setIsAdmin(((superSnap.data() as any)?.isSuperAdmin === true) || groupSnap.exists());
       } catch {
         if (!ignore) setIsAdmin(false);
       }

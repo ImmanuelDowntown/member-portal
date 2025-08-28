@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const uid = u.uid;
       // Super admin check
-      const superSnap = await getDoc(doc(db, "admins", uid));
-      const isSuper = superSnap.exists();
+      const superSnap = await getDoc(doc(db, "users", uid));
+      const isSuper = (superSnap.data() as any)?.isSuperAdmin === true;
 
       // Group admin check (we rely on presence of { uid } field to query)
       let isGroupAdmin = false;

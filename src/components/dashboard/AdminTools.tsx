@@ -40,8 +40,8 @@ export default function AdminTools() {
       setLoading(true);
       try {
         // 1) Check super-admin
-        const adminSnap = await getDoc(doc(db, "admins", uid));
-        const superYes = adminSnap.exists();
+        const adminSnap = await getDoc(doc(db, "users", uid));
+        const superYes = (adminSnap.data() as any)?.isSuperAdmin === true;
         if (!active) return;
         setIsSuper(superYes);
 

@@ -19,8 +19,8 @@ export default function Settings() {
   React.useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
-    getDoc(doc(db, "admins", uid))
-      .then((snap) => setIsSuperAdmin(snap.exists()))
+    getDoc(doc(db, "users", uid))
+      .then((snap) => setIsSuperAdmin((snap.data() as any)?.isSuperAdmin === true))
       .catch(() => setIsSuperAdmin(false));
   }, [auth, db]);
 

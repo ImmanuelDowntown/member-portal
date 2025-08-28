@@ -38,13 +38,13 @@ export default function SundayResources() {
   const [err, setErr] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
-  // Check super-admin by looking for /admins/{uid}
+  // Check super-admin by looking at users/{uid}.isSuperAdmin
   React.useEffect(() => {
     let unsub: (() => void) | undefined;
     if (user?.uid) {
-      const dref = doc(db, "admins", user.uid);
+      const dref = doc(db, "users", user.uid);
       import("firebase/firestore").then(({ onSnapshot: os }) => {
-        unsub = os(dref, (snap) => setIsSuper(snap.exists()));
+        unsub = os(dref, (snap) => setIsSuper((snap.data() as any)?.isSuperAdmin === true));
       });
     } else {
       setIsSuper(false);

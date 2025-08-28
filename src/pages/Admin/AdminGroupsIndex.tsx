@@ -86,8 +86,8 @@ export default function AdminGroupsIndex() {
         const uid = u.uid;
 
         // super-admin check
-        const superSnap = await getDoc(doc(db, "admins", uid));
-        const superAdmin = superSnap.exists();
+        const superSnap = await getDoc(doc(db, "users", uid));
+        const superAdmin = (superSnap.data() as any)?.isSuperAdmin === true;
         if (!cancelled) setIsSuper(superAdmin);
 
         let groupIds: string[] = [];

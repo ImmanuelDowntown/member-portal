@@ -1,6 +1,6 @@
 /* src/pages/Dashboard.tsx
    Fix (schema-aligned):
-   - Super-admin: /admins/{uid} exists → watch ALL membershipRequests where status == 'pending'
+   - Super-admin: users/{uid}.isSuperAdmin == true → watch ALL membershipRequests where status == 'pending'
    - Group-admin: any /groups/{gid}/groupAdmins/{uid} doc exists → watch that group's membershipRequests where status == 'pending'
    - New users: for super-admins, watch users where reviewed == false OR status == 'pending' OR needsReview == true
    - Button is yellow if either condition is true, grey otherwise.
@@ -78,11 +78,11 @@ export default function Dashboard() {
       newUsersAnyRef.current = false;
       updateFlag();
 
-      // Super-admin detection: /admins/{uid} exists
+      // Super-admin detection via users/{uid}.isSuperAdmin
       let isSuper = false;
       try {
-        const superSnap = await getDoc(doc(db, "admins", uid));
-        isSuper = superSnap.exists();
+        const superSnap = await getDoc(doc(db, "users", uid));
+        isSuper = (superSnap.data() as any)?.isSuperAdmin === true;
       } catch { isSuper = false; }
 
       // 1) Watch membership requests with status == "pending"

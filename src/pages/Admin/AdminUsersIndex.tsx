@@ -26,6 +26,7 @@ type UserRow = {
   status?: string; // active | inactive | deleted (if present on user doc)
   isCommunityApproved?: boolean;
   reviewed?: boolean;
+  isSuperAdmin?: boolean;
   groups: Array<{ id: string; name: string }>;
 };
 
@@ -64,8 +65,8 @@ export default function AdminUsersIndex() {
         }
 
         // super-admin check
-        const superSnap = await getDoc(doc(db, "admins", current.uid));
-        const superAdmin = superSnap.exists();
+        const superSnap = await getDoc(doc(db, "users", current.uid));
+        const superAdmin = (superSnap.data() as any)?.isSuperAdmin === true;
         if (!cancelled) setIsSuper(superAdmin);
 
         // Read all /users docs (super admins can read them per rules)
@@ -79,6 +80,7 @@ export default function AdminUsersIndex() {
             status: (data?.status as string) || "active",
             isCommunityApproved: Boolean(data?.isCommunityApproved),
             reviewed: Boolean(data?.reviewed),
+            isSuperAdmin: Boolean(data?.isSuperAdmin),
             groups: [],
           };
         });
@@ -171,6 +173,19 @@ export default function AdminUsersIndex() {
       setUsers((prev) => prev.filter((u) => u.uid !== uid));
     } catch (e) {
       alert("Failed to delete user.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function handleToggleSuper(uid: string, next: boolean) {
+    if (!isSuper) return;
+    setBusy(`super:${uid}`);
+    try {
+      await setDoc(doc(db, "users", uid), { isSuperAdmin: next }, { merge: true });
+      setUsers((prev) => prev.map((u) => (u.uid === uid ? { ...u, isSuperAdmin: next } : u)));
+    } catch {
+      alert("Failed to update super admin status.");
     } finally {
       setBusy("");
     }
@@ -301,6 +316,16 @@ export default function AdminUsersIndex() {
                 </div>
                 <div className="col-span-2 text-right">
                   <div className="inline-flex flex-col gap-1 items-end">
+                    <label className="inline-flex items-center gap-2 text-xs select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!u.isSuperAdmin}
+                        onChange={(e) => void handleToggleSuper(u.uid, e.target.checked)}
+                        disabled={!isSuper || !!busy}
+                      />
+                      <span>Super Admin</span>
+                    </label>
+
                     <label className="inline-flex items-center gap-2 text-xs select-none">
                       <input
                         type="checkbox"
