@@ -13,6 +13,7 @@ import {
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { askPastorQuestion } from "@/lib/askPastorQuestion";
+import { logResourceAccess } from "@/lib/activity";
 
 type ResourceDoc = {
   id: string;
@@ -307,6 +308,7 @@ export default function Forum() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium text-accent hover:underline"
+                    onClick={() => logResourceAccess(`sundayResources/${p.id}`, p.title)}
                   >
                     {p.title}
                   </a>
@@ -371,6 +373,7 @@ export default function Forum() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium text-accent hover:underline"
+                    onClick={() => logResourceAccess(`forumResources/${r.id}`, r.title)}
                   >
                     {r.title}
                   </a>
