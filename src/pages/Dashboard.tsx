@@ -269,7 +269,7 @@ export default function Dashboard() {
             </p>
           </div>
           <Link
-            to="/admin/groups"
+            to="/admin"
             className={adminBtnClass}
             title={needsAttention ? "Pending requests or new users need review" : "Open Admin Console"}
           >

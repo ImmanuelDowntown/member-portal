@@ -35,6 +35,7 @@ import UserActivity from "@/pages/UserActivity";
 
 // Admin Pages
 import GroupAdminBootstrap from "@/pages/Admin/GroupAdminBootstrap";
+import AdminConsole from "@/pages/Admin/AdminConsole";
 import AdminGroupsIndex from "@/pages/Admin/AdminGroupsIndex";
 import AdminUsersIndex from "@/pages/Admin/AdminUsersIndex";
 import AdminGroupRequests from "@/pages/Admin/AdminGroupRequests";
@@ -100,10 +101,10 @@ export default function App() {
 
 
             {/* Admin routes */}
-            {/* Base /admin redirects to /admin/groups and is admin-gated */}
-            <Route path="/admin" element={<AdminRoute><Navigate to="/admin/groups" replace /></AdminRoute>} />
+            {/* Admin Console landing page */}
+            <Route path="/admin" element={<AdminRoute><OnboardRoute><AdminConsole /></OnboardRoute></AdminRoute>} />
 
-            {/* Admin Console (list of groups) – admin only */}
+            {/* Admin Groups index */}
             <Route path="/admin/groups" element={<AdminRoute><OnboardRoute><AdminGroupsIndex /></OnboardRoute></AdminRoute>} />
 
             {/* Per-group admin pages – group-admin gated */}
