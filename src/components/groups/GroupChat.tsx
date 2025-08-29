@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   getFirestore,
   collection,
@@ -39,12 +39,14 @@ function MessageItem({
   lastSeen,
   currentUid,
   canDelete,
+  markRepliesRead,
 }: {
   groupId: string;
   msg: Msg;
   lastSeen: number;
   currentUid: string | null;
   canDelete: boolean;
+  markRepliesRead: (ts?: number) => void;
 }) {
   const db = getFirestore(app);
   const auth = getAuth(app);
@@ -53,6 +55,12 @@ function MessageItem({
   const [replies, setReplies] = useState<Msg[]>([]);
   const [replyText, setReplyText] = useState("");
   const [replyFile, setReplyFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (showThread && msg.latestReplyAt && msg.latestReplyAt > lastSeen) {
+      markRepliesRead(msg.latestReplyAt);
+    }
+  }, [showThread, msg.latestReplyAt, lastSeen, markRepliesRead]);
 
   useEffect(() => {
     if (!showThread || !msg.id) return;
@@ -224,10 +232,18 @@ export default function GroupChat({ groupId }: { groupId: string }) {
   const [file, setFile] = useState<File | null>(null);
   const storage = getStorage(app);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const [lastSeen] = useState<number>(() => {
+  const [lastSeen, setLastSeen] = useState<number>(() => {
     const stored = localStorage.getItem(`groupChatLastSeen_${groupId}`);
     return stored ? parseInt(stored, 10) : 0;
   });
+  const markRepliesRead = useCallback(
+    (ts?: number) => {
+      const newTs = Math.max(Date.now(), ts || 0);
+      localStorage.setItem(`groupChatLastSeen_${groupId}`, newTs.toString());
+      setLastSeen(newTs);
+    },
+    [groupId]
+  );
   const [canDeleteAll, setCanDeleteAll] = useState(false);
 
   useEffect(() => {
@@ -255,9 +271,9 @@ export default function GroupChat({ groupId }: { groupId: string }) {
 
   useEffect(() => {
     return () => {
-      localStorage.setItem(`groupChatLastSeen_${groupId}`, Date.now().toString());
+      markRepliesRead();
     };
-  }, [groupId]);
+  }, [groupId, markRepliesRead]);
 
   useEffect(() => {
     const q = query(collection(db, `groups/${groupId}/messages`), orderBy("createdAt", "asc"));
@@ -327,6 +343,7 @@ export default function GroupChat({ groupId }: { groupId: string }) {
             lastSeen={lastSeen}
             currentUid={auth.currentUser?.uid || null}
             canDelete={canDeleteAll}
+            markRepliesRead={markRepliesRead}
           />
         ))}
         <div ref={bottomRef} />

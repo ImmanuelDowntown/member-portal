@@ -14,6 +14,7 @@ import { app } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import Loader from "@/components/Loader";
 import { Link } from "react-router-dom";
+import { logResourceAccess } from "@/lib/activity";
 
 type SRDoc = {
   id: string;
@@ -172,7 +173,13 @@ export default function SundayResources() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">
-                        <a href={r.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                        <a
+                          href={r.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                          onClick={() => logResourceAccess(`sundayResources/${r.id}`, r.title)}
+                        >
                           {r.title}
                         </a>
                       </p>
@@ -183,6 +190,7 @@ export default function SundayResources() {
                         to={r.url}
                         target="_blank"
                         className="text-xs px-2 py-1 rounded-md border border-border hover:bg-muted/70"
+                        onClick={() => logResourceAccess(`sundayResources/${r.id}`, r.title)}
                       >
                         Open
                       </Link>
