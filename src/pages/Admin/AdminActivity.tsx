@@ -13,6 +13,7 @@ import { auth, db } from "@/lib/firebase";
 type Activity = {
   id: string;
   type: string;
+  displayName?: string | null;
   resourcePath?: string;
   title?: string | null;
   createdAt?: any;
@@ -73,10 +74,14 @@ export default function AdminActivity() {
           <li key={a.id} className="p-4 text-sm">
             {a.type === "resource_access" ? (
               <span>
-                Opened resource {a.title ? <strong>{a.title}</strong> : <code>{a.resourcePath}</code>}
+                {a.displayName && <strong className="mr-1">{a.displayName}</strong>}
+                opened resource {a.title ? <strong>{a.title}</strong> : <code>{a.resourcePath}</code>}
               </span>
             ) : (
-              <span>{a.type}</span>
+              <span>
+                {a.displayName && <strong className="mr-1">{a.displayName}</strong>}
+                {a.type}
+              </span>
             )}
             {a.createdAt?.toDate && (
               <span className="block text-xs text-slate-500 mt-1">
