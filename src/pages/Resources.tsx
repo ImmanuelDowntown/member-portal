@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getAuth } from "firebase/auth";
 import {
   getFirestore,
   collectionGroup,
@@ -8,6 +7,7 @@ import {
   query,
 } from "firebase/firestore";
 import { app } from "@/lib/firebase";
+import { logResourceAccess } from "@/lib/activity";
 
 type Resource = {
   id?: string;
@@ -20,7 +20,6 @@ type Resource = {
 };
 
 export default function Resources() {
-  const auth = getAuth(app);
   const db = getFirestore(app);
   const [items, setItems] = useState<Resource[]>([]);
   const [qtext, setQtext] = useState("");
@@ -130,14 +129,15 @@ export default function Resources() {
             <li key={r.__path || r.id} className="p-4 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-sm text-accent underline underline-offset-2 break-all"
-                  >
-                    {r.title || r.url}
-                  </a>
+                <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-accent underline underline-offset-2 break-all"
+                  onClick={() => logResourceAccess(r.__path || "", r.title || r.url)}
+                >
+                  {r.title || r.url}
+                </a>
                   {isNew(r.createdAt) && (
                     <span className="text-[10px] uppercase tracking-wide rounded-full bg-green-100 text-green-800 px-2 py-0.5">
                       New

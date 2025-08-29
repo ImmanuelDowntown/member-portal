@@ -14,6 +14,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { app } from "@/lib/firebase";
+import { logResourceAccess } from "@/lib/activity";
 
 type Resource = {
   id?: string;
@@ -294,6 +295,7 @@ export default function GroupResources({ groupId }: { groupId: string }) {
                   target="_blank"
                   rel="noreferrer"
                   className="text-sm text-accent underline underline-offset-2 break-all"
+                  onClick={() => logResourceAccess(`groups/${groupId}/resources/${r.id}`, r.title || pretty(r.url))}
                 >
                   {r.title || pretty(r.url)}
                 </a>
