@@ -24,39 +24,6 @@ type GroupRow = {
   pendingRequests?: number;
 };
 
-type MemberDoc = {
-  displayName?: string;
-  email?: string;
-  role?: string;
-  joinedAt?: any; // Timestamp
-};
-
-type UserRow = {
-  uid: string;
-  name?: string;
-  email?: string;
-  groups: Array<{ id: string; name: string }>;
-};
-
-const NEW_WINDOW_DAYS = 14;
-
-function tsToDate(ts: any): Date | null {
-  try {
-    if (!ts) return null;
-    if (ts.toDate) return ts.toDate();
-    if (ts instanceof Date) return ts;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function isWithinDays(d: Date | null, days: number): boolean {
-  if (!d) return false;
-  const ms = days * 24 * 60 * 60 * 1000;
-  return Date.now() - d.getTime() <= ms;
-}
-
 export default function AdminGroupsIndex() {
   const db = useMemo(() => getFirestore(app), []);
   const auth = getAuth(app);
@@ -64,10 +31,6 @@ export default function AdminGroupsIndex() {
   const [loading, setLoading] = useState(true);
   const [isSuper, setIsSuper] = useState(false);
   const [groups, setGroups] = useState<GroupRow[]>([]);
-
-  // Users block
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [userRows, setUserRows] = useState<UserRow[]>([]);
 
   // Determine super-admin and load groups user can manage
   useEffect(() => {
@@ -143,84 +106,6 @@ export default function AdminGroupsIndex() {
       cancelled = true;
     };
   }, [db, auth.currentUser]);
-
-  // Build "Users & Groups" rollup from the groups we have
-  useEffect(() => {
-    let cancelled = false;
-    async function loadUsersFromGroups() {
-      try {
-        setUsersLoading(true);
-        const byUser: Record<string, UserRow & { latestJoinAt?: Date | null }> = {};
-        for (const g of groups) {
-          try {
-            const msnap = await getDocs(collection(db, `groups/${g.id}/members`));
-            msnap.forEach((m) => {
-              const data = m.data() as MemberDoc;
-              const uid = m.id;
-              if (!byUser[uid]) {
-                byUser[uid] = {
-                  uid,
-                  name: data?.displayName,
-                  email: data?.email,
-                  groups: [],
-                  latestJoinAt: null,
-                };
-              }
-              byUser[uid].groups.push({ id: g.id, name: g.name || g.id });
-              const joinedAt = tsToDate(data?.joinedAt);
-              if (joinedAt) {
-                const current = byUser[uid].latestJoinAt;
-                if (!current || joinedAt > current) byUser[uid].latestJoinAt = joinedAt;
-              }
-            });
-          } catch {
-            // continue
-          }
-          if (cancelled) return;
-        }
-
-        // Convert to rows
-        let rows: UserRow[] = Object.values(byUser).sort((a, b) => (a.name || a.uid).localeCompare(b.name || b.uid));
-
-        // Filter to "new / unapproved" users
-        if (isSuper) {
-          // Super Admin: check /users docs for isCommunityApproved or createdAt
-          const filtered: UserRow[] = [];
-          for (const r of rows) {
-            try {
-              const usnap = await getDoc(doc(db, "users", r.uid));
-              const udata = (usnap.data() || {}) as any;
-              const approved = !!udata?.isCommunityApproved;
-              const createdAt = tsToDate(udata?.createdAt);
-              const isNew = isWithinDays(createdAt, NEW_WINDOW_DAYS);
-              if (!approved || isNew) {
-                filtered.push(r);
-              }
-            } catch {
-              // if user doc missing, treat as not new & approved -> exclude
-            }
-            if (cancelled) return;
-          }
-          rows = filtered;
-        } else {
-          // Group Admin: no access to /users; approximate using recent join to any of the groups they manage
-          rows = rows.filter((r: any) => isWithinDays(r.latestJoinAt || null, NEW_WINDOW_DAYS));
-        }
-
-        if (!cancelled) setUserRows(rows);
-      } finally {
-        if (!cancelled) setUsersLoading(false);
-      }
-    }
-    if (groups.length) {
-      loadUsersFromGroups();
-    } else {
-      setUserRows([]);
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [db, groups, isSuper]);
 
   if (loading) {
     return (
@@ -298,56 +183,6 @@ export default function AdminGroupsIndex() {
           })}
         </ul>
       )}
-
-      {/* Users & Groups block */}
-      <section className="mt-8 rounded-xl border border-slate-200 bg-white/70 p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Users</h2>
-          <Link to="/admin/users" className="text-sm text-slate-700 underline">
-            Open full users page
-          </Link>
-        </div>
-        {usersLoading ? (
-          <p className="text-sm text-slate-600 mt-3">Loading users…</p>
-        ) : userRows.length === 0 ? (
-          <p className="text-sm text-slate-600 mt-3">
-            {isSuper
-              ? `No new or unapproved users in the last ${NEW_WINDOW_DAYS} days.`
-              : `No recently joined users (last ${NEW_WINDOW_DAYS} days) in your groups.`}
-          </p>
-        ) : (
-          <ul className="mt-3 divide-y divide-slate-200">
-            {userRows.map((u) => (
-              <li key={u.uid} className="py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-slate-900 break-all">{u.name || u.uid}</div>
-                    {u.email && <div className="text-xs text-slate-600 break-all">{u.email}</div>}
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {u.groups.map((g) => (
-                        <Link
-                          key={g.id}
-                          to={`/admin/groups/${g.id}/members`}
-                          className="text-xs rounded-full bg-slate-100 px-2 py-0.5 text-slate-800 hover:bg-slate-200"
-                          title="Manage members"
-                        >
-                          {g.name}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                  <Link
-                    to={`/admin/users?uid=${encodeURIComponent(u.uid)}`}
-                    className="text-xs rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-100 shrink-0"
-                  >
-                    View
-                  </Link>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
   );
 }
