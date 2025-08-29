@@ -38,6 +38,8 @@ export default function Dashboard() {
   // Combined flags
   const pendingRequestsAnyRef = useRef<boolean>(false); // any membershipRequests docs
   const newUsersAnyRef = useRef<boolean>(false);        // new/unreviewed users (super-admin only)
+  const questionsAnyRef = useRef<boolean>(false);       // new pastor questions
+  const activityAnyRef = useRef<boolean>(false);        // new activity logs
   const newUsersCountsRef = useRef<Map<string, number>>(new Map());
 
   // For group-admins: dynamic per-group listeners
@@ -49,7 +51,13 @@ export default function Dashboard() {
     const unsubs: Unsubscribe[] = [];
 
     const updateFlag = () => {
-      if (!cancelled) setNeedsAttention(pendingRequestsAnyRef.current || newUsersAnyRef.current);
+      if (!cancelled)
+        setNeedsAttention(
+          pendingRequestsAnyRef.current ||
+          newUsersAnyRef.current ||
+          questionsAnyRef.current ||
+          activityAnyRef.current
+        );
     };
 
     const recomputeNewUsers = () => {
@@ -76,6 +84,8 @@ export default function Dashboard() {
       pendingRequestsAnyRef.current = false;
       newUsersCountsRef.current.clear();
       newUsersAnyRef.current = false;
+      questionsAnyRef.current = false;
+      activityAnyRef.current = false;
       updateFlag();
 
       // Super-admin detection via users/{uid}.isSuperAdmin
@@ -202,6 +212,29 @@ export default function Dashboard() {
         watchUsers("status", query(collection(db, "users"), where("status", "==", "pending")));
         watchUsers("needsReview", query(collection(db, "users"), where("needsReview", "==", true)));
       }
+
+      // 3) Questions directed to the admin
+      const qQ = query(
+        collection(db, "pastorQuestions"),
+        where("to", "==", uid)
+      );
+      unsubs.push(
+        onSnapshot(
+          qQ,
+          (qs) => { questionsAnyRef.current = qs.size > 0; updateFlag(); },
+          () => { questionsAnyRef.current = false; updateFlag(); }
+        )
+      );
+
+      // 4) Activity for the admin
+      const aQ = collection(db, `users/${uid}/activity`);
+      unsubs.push(
+        onSnapshot(
+          aQ,
+          (qs) => { activityAnyRef.current = qs.size > 0; updateFlag(); },
+          () => { activityAnyRef.current = false; updateFlag(); }
+        )
+      );
     }
 
     void wireAttention();
@@ -212,6 +245,8 @@ export default function Dashboard() {
       clearGroupListeners();
       newUsersCountsRef.current.clear();
       newUsersAnyRef.current = false;
+      questionsAnyRef.current = false;
+      activityAnyRef.current = false;
     };
   }, [auth, db]);
 

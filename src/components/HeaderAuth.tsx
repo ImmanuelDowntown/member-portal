@@ -76,7 +76,6 @@ export default function HeaderAuth(){
             <NavLink to="/dashboard" className={({isActive}) => navItemClass(isActive)}>Dashboard</NavLink>
             <NavLink to="/forum" className={({isActive}) => navItemClass(isActive)}>The Forum</NavLink>
             <NavLink to="/groups" className={({isActive}) => navItemClass(isActive)}>Groups</NavLink>
-            <NavLink to="/activity" className={({isActive}) => navItemClass(isActive)}>Activity</NavLink>
           </nav>
 
         </div>
@@ -109,8 +108,6 @@ export default function HeaderAuth(){
                 {user ? (
                   <>
                     <Link to="/profile" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Profile</Link>
-                    <Link to="/activity" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Activity</Link>
-                    {isPastor && <Link to="/pastor/questions" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Questions</Link>}
                     {isAdmin && <Link to="/admin" className="btn btn-outline btn-sm" onClick={() => setMenuOpen(false)}>Admin</Link>}
                     <button className="btn btn-outline btn-sm" onClick={() => { setMenuOpen(false); signOut(auth); }}>Sign out</button>
                   </>
