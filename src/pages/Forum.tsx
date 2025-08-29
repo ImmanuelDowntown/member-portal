@@ -46,7 +46,7 @@ export default function Forum() {
   const [questionError, setQuestionError] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, "sundayResources"), orderBy("createdAt", "asc"));
+    const q = query(collection(db, "sundayResources"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       const list: ResourceDoc[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
       setPapers(list);
