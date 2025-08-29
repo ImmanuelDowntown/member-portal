@@ -34,6 +34,9 @@ export default function Forum() {
   const [newTitle, setNewTitle] = useState("");
   const [newBody, setNewBody] = useState("");
   const [isSuper, setIsSuper] = useState<boolean | null>(null);
+  const [paperTitle, setPaperTitle] = useState("");
+  const [paperUrl, setPaperUrl] = useState("");
+  const [paperNote, setPaperNote] = useState("");
   const [resTitle, setResTitle] = useState("");
   const [resUrl, setResUrl] = useState("");
   const [resNote, setResNote] = useState("");
@@ -100,6 +103,30 @@ export default function Forum() {
     });
     setNewTitle("");
     setNewBody("");
+  };
+
+  const addPaper = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!isSuper) return;
+    const title = paperTitle.trim();
+    const url = paperUrl.trim();
+    const note = paperNote.trim();
+    if (!title || !url) return;
+    await addDoc(collection(db, "sundayResources"), {
+      title,
+      url,
+      note: note || null,
+      createdAt: serverTimestamp(),
+      createdBy: user?.uid ?? null,
+    });
+    setPaperTitle("");
+    setPaperUrl("");
+    setPaperNote("");
+  };
+
+  const removePaper = async (id: string) => {
+    if (!isSuper) return;
+    await deleteDoc(doc(db, "sundayResources", id));
   };
 
   const addResource = async (e: FormEvent) => {
@@ -284,9 +311,48 @@ export default function Forum() {
                     {p.title}
                   </a>
                   {p.note && <p className="text-sm text-text2 mt-1">{p.note}</p>}
+                  {isSuper && (
+                    <button
+                      onClick={() => removePaper(p.id)}
+                      className="ml-2 text-xs text-red-500 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
+          )}
+          {isSuper && (
+            <form onSubmit={addPaper} className="mt-4 space-y-2">
+              <input
+                type="text"
+                value={paperTitle}
+                onChange={(e) => setPaperTitle(e.target.value)}
+                placeholder="Title"
+                className="w-full rounded-md border border-border bg-background p-2"
+              />
+              <input
+                type="url"
+                value={paperUrl}
+                onChange={(e) => setPaperUrl(e.target.value)}
+                placeholder="URL"
+                className="w-full rounded-md border border-border bg-background p-2"
+              />
+              <input
+                type="text"
+                value={paperNote}
+                onChange={(e) => setPaperNote(e.target.value)}
+                placeholder="Note (optional)"
+                className="w-full rounded-md border border-border bg-background p-2"
+              />
+              <button
+                type="submit"
+                className="rounded-md bg-slate-900 px-4 py-2 text-white"
+              >
+                Add paper
+              </button>
+            </form>
           )}
         </section>
 

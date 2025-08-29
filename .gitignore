@@ -6,3 +6,7 @@ node_modules
 
 .vercel
 *.patch
+
+# Ignore service account keys
+functions/keys/
+*.json
