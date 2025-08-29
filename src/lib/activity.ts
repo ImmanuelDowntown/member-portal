@@ -9,6 +9,7 @@ export async function logResourceAccess(resourcePath: string, title?: string) {
       type: "resource_access",
       resourcePath,
       title: title || null,
+      displayName: auth.currentUser?.displayName || null,
       createdAt: serverTimestamp(),
     });
   } catch (err) {
