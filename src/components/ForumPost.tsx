@@ -6,6 +6,8 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
+  query,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +17,13 @@ export type Post = {
   author: string;
   content: string;
   quote?: string;
+  uid?: string;
+};
+
+type Reply = {
+  id: string;
+  author: string;
+  content: string;
   uid?: string;
 };
 
@@ -28,6 +37,7 @@ export default function ForumPost({ threadId, post }: ForumPostProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [newReply, setNewReply] = useState("");
   const [isSuper, setIsSuper] = useState(false);
+  const [replies, setReplies] = useState<Reply[]>([]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -39,15 +49,24 @@ export default function ForumPost({ threadId, post }: ForumPostProps) {
     return () => unsub();
   }, [user?.uid]);
 
+  useEffect(() => {
+    const q = query(
+      collection(db, "forumThreads", threadId, "posts", post.id, "replies"),
+      orderBy("createdAt", "asc"),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setReplies(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+    });
+    return () => unsub();
+  }, [threadId, post.id]);
+
   const createReply = async (e: FormEvent) => {
     e.preventDefault();
     const content = newReply.trim();
     if (!content || !user) return;
-    const quote = post.content.split(/\r?\n/).slice(0, 3).join("\n");
-    await addDoc(collection(db, "forumThreads", threadId, "posts"), {
+    await addDoc(collection(db, "forumThreads", threadId, "posts", post.id, "replies"), {
       author: user.displayName || user.email || "Anonymous",
       content,
-      quote,
       uid: user.uid,
       createdAt: serverTimestamp(),
     });
@@ -58,6 +77,12 @@ export default function ForumPost({ threadId, post }: ForumPostProps) {
   const removePost = async () => {
     if (!user) return;
     await deleteDoc(doc(db, "forumThreads", threadId, "posts", post.id));
+  };
+
+  const removeReply = async (rid: string, ruid?: string) => {
+    if (!user) return;
+    if (!(isSuper || user.uid === ruid)) return;
+    await deleteDoc(doc(db, "forumThreads", threadId, "posts", post.id, "replies", rid));
   };
 
   return (
@@ -105,6 +130,27 @@ export default function ForumPost({ threadId, post }: ForumPostProps) {
             </form>
           )}
         </>
+      )}
+      {replies.length > 0 && (
+        <div className="mt-4 space-y-2 border-l border-border pl-4">
+          {replies.map((r) => (
+            <div key={r.id} className="relative">
+              <p className="text-sm">
+                <span className="font-medium text-accent">{r.author}</span>
+              </p>
+              <p className="whitespace-pre-line text-sm text-text2">{r.content}</p>
+              {(user && (isSuper || user.uid === r.uid)) && (
+                <button
+                  type="button"
+                  onClick={() => void removeReply(r.id, r.uid)}
+                  className="absolute top-0 right-0 text-xs text-red-500 hover:underline"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
