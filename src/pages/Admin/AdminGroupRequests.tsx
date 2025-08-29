@@ -106,22 +106,17 @@ export default function AdminGroupRequests() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="mb-4">
-        <Link
-          to="/admin"
-          className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted"
-        >
-          <span aria-hidden>←</span>
-          <span>Return to Admin Console</span>
-        </Link>
-      </div>
-    
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Pending Requests</h1>
           <p className="text-slate-600">Group: {groupName}</p>
         </div>
-        <Link to={`/groups/${groupId}`} className="text-sm text-slate-700 underline">Back to group</Link>
+        <div className="flex items-center gap-2">
+          <Link to="/admin" className="text-sm text-slate-700 underline">
+            Back to Admin Console
+          </Link>
+          <Link to={`/groups/${groupId}`} className="text-sm text-slate-700 underline">Back to group</Link>
+        </div>
       </div>
 
       {loading ? (

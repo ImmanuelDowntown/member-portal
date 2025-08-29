@@ -135,6 +135,7 @@ export default function AdminGroupsIndex() {
           <Link to="/admin/users" className="text-sm text-slate-700 underline">
             Users
           </Link>
+          <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
         </div>
       </div>
 

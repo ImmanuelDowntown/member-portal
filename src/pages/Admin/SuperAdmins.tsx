@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getFirestore, collection, getDocs, setDoc, doc, serverTimestamp, query, where, deleteField } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
@@ -58,7 +59,10 @@ export default function SuperAdmins() {
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Super Admins</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-900">Super Admins</h1>
+        <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
+      </div>
       <p className="text-slate-600 mt-1">Add or remove super admins by UID.</p>
 
       <div className="mt-4 rounded-2xl border border-slate-200 bg-white/70 p-4">

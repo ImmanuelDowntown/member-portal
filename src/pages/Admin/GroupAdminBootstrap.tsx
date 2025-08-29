@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import {
   getFirestore,
@@ -59,7 +60,10 @@ export default function GroupAdminBootstrap() {
 
   return (
     <div className="max-w-xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Grant Group Admin</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-900">Grant Group Admin</h1>
+        <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
+      </div>
       <p className="text-slate-600 mt-2">Assign a user as an admin for a specific group.</p>
       <div className="mt-4 space-y-3">
         <div>

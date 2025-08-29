@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { app } from "@/lib/firebase"; // change to ../lib/firebase if you don't use the @ alias
 
@@ -56,7 +57,10 @@ export default function SeedGroups() {
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Seed Groups</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-900">Seed Groups</h1>
+        <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
+      </div>
       <p className="text-slate-600 mt-2">
         Creates a few starter groups in the <code>groups</code> collection. Delete this page/route after running.
       </p>

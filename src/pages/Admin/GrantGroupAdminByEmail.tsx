@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { httpsCallable, getFunctions } from "firebase/functions";
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
@@ -41,7 +42,10 @@ export default function GrantGroupAdminByEmail() {
 
   return (
     <div className="max-w-xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Grant Group Admin (by email)</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-900">Grant Group Admin (by email)</h1>
+        <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
+      </div>
       <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4">
         <label className="block text-sm">
           <span className="font-medium text-slate-700">User email</span>

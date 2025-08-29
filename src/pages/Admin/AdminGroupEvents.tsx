@@ -54,7 +54,10 @@ export default function AdminGroupEvents() {
           <h1 className="text-2xl font-semibold text-slate-900">Audit Log</h1>
           <p className="text-slate-600">Recent events for this group.</p>
         </div>
-        <Link to={`/admin/groups`} className="text-sm text-slate-700 underline">Back to groups</Link>
+        <div className="flex items-center gap-2">
+          <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
+          <Link to={`/admin/groups`} className="text-sm text-slate-700 underline">Back to groups</Link>
+        </div>
       </div>
 
       {loading ? (

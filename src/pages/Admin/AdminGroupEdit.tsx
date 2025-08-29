@@ -109,7 +109,10 @@ export default function AdminGroupEdit() {
     <div className="max-w-3xl mx-auto p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">Edit Group</h1>
-        <Link to="/admin/groups" className="text-sm text-slate-700 underline">Back to groups</Link>
+        <div className="flex items-center gap-2">
+          <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
+          <Link to="/admin/groups" className="text-sm text-slate-700 underline">Back to groups</Link>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3">

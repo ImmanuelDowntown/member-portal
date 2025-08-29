@@ -266,13 +266,16 @@ export default function AdminUsersIndex() {
     <div className="max-w-5xl mx-auto p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">Users</h1>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search users…"
-          className="rounded-lg border border-slate-300 bg-white/80 px-3 py-2 text-sm outline-none w-56"
-          aria-label="Search users"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search users…"
+            className="rounded-lg border border-slate-300 bg-white/80 px-3 py-2 text-sm outline-none w-56"
+            aria-label="Search users"
+          />
+          <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
+        </div>
       </div>
 
       <div className="mt-4 rounded-xl border border-slate-200 bg-white/70 overflow-hidden">

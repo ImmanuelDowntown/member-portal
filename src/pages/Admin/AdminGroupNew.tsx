@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
@@ -82,7 +82,10 @@ export default function AdminGroupNew() {
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Create Group</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-900">Create Group</h1>
+        <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
+      </div>
       <div className="mt-4 grid gap-3">
         <Field label="Name">
           <input

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { getFirestore, doc, setDoc, serverTimestamp, getDocs, collection } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase"; // change to ../lib/firebase if needed
@@ -68,7 +69,10 @@ export default function SeedGroupsDebug4() {
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Seed Groups (Debug 4)</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-slate-900">Seed Groups (Debug 4)</h1>
+        <Link to="/admin" className="text-sm text-slate-700 underline">Back to Admin Console</Link>
+      </div>
       <div className="mt-4 flex gap-3">
         <button onClick={seed} disabled={busy} className="px-4 py-2 rounded-lg bg-slate-900 text-white disabled:opacity-60">
           {busy ? "Seeding…" : "Seed Groups"}

@@ -251,9 +251,14 @@ export default function AdminGroupMembers() {
           <h1 className="text-2xl font-semibold text-slate-900">Group Members</h1>
           <p className="text-slate-600">Group: {groupName}</p>
         </div>
-        <Link to="/admin/groups" className="text-sm text-slate-700 underline">
-          Back to groups
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/admin" className="text-sm text-slate-700 underline">
+            Back to Admin Console
+          </Link>
+          <Link to="/admin/groups" className="text-sm text-slate-700 underline">
+            Back to groups
+          </Link>
+        </div>
       </div>
 
       {errorMsg && <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{errorMsg}</div>}
