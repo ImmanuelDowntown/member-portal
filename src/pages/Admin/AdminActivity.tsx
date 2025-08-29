@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  collection,
+  collectionGroup,
   deleteDoc,
   getDocs,
   onSnapshot,
@@ -19,32 +19,32 @@ type Activity = {
 };
 
 export default function AdminActivity() {
-  const uid = auth.currentUser?.uid;
+  const user = auth.currentUser;
   const [items, setItems] = useState<Activity[]>([]);
 
   useEffect(() => {
-    if (!uid) return;
+    if (!user) return;
     const qy = query(
-      collection(db, `users/${uid}/activity`),
+      collectionGroup(db, "activity"),
       orderBy("createdAt", "desc")
     );
     const unsub = onSnapshot(qy, (snap) => {
       setItems(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
     });
     return unsub;
-  }, [uid]);
+  }, [user]);
 
   async function handleMarkReviewed() {
-    if (!uid) return;
+    if (!user) return;
     try {
-      const snap = await getDocs(collection(db, `users/${uid}/activity`));
+      const snap = await getDocs(collectionGroup(db, "activity"));
       await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
     } catch {
       alert("Failed to mark activity as reviewed.");
     }
   }
 
-  if (!uid) {
+  if (!user) {
     return (
       <div className="container py-10">
         <p className="text-text2">You must be signed in to view activity.</p>

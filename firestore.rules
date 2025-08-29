@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
       
-  // Activity log: users can create and read their own activity documents only.
+  // Activity log: users can create and read their own activity documents; super admins may read or delete any.
   match /users/{uid}/activity/{docId} {
     // Create only if the user is writing to their own activity and the payload matches the schema.
     allow create: if request.auth != null
@@ -14,10 +14,11 @@ service cloud.firestore {
                   && request.resource.data.resourcePath is string
                   && (request.resource.data.title == null || request.resource.data.title is string)
                   && request.resource.data.createdAt is timestamp;
-    // Read your own activity
-    allow get, list: if request.auth != null && request.auth.uid == uid;
-    // Keep activity immutable
-    allow update, delete: if false;
+    // Read your own activity; super admins can read all.
+    allow get, list: if request.auth != null && (request.auth.uid == uid || isSuperAdmin());
+    // Super admins may delete reviewed activity; no updates allowed.
+    allow delete: if isSuperAdmin();
+    allow update: if false;
   }
 // ---------- Helper functions ----------
     function isSignedIn() {
