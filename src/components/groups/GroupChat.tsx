@@ -2,15 +2,16 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   getFirestore,
   collection,
-  addDoc,
   serverTimestamp,
   orderBy,
   query,
   onSnapshot,
   doc,
   setDoc,
+  getDoc,
   getDocs,
   limit,
+  deleteDoc,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import {
@@ -32,7 +33,19 @@ type Msg = {
   latestReplyAt?: number | null;
 };
 
-function MessageItem({ groupId, msg, lastSeen }: { groupId: string; msg: Msg; lastSeen: number }) {
+function MessageItem({
+  groupId,
+  msg,
+  lastSeen,
+  currentUid,
+  canDelete,
+}: {
+  groupId: string;
+  msg: Msg;
+  lastSeen: number;
+  currentUid: string | null;
+  canDelete: boolean;
+}) {
   const db = getFirestore(app);
   const auth = getAuth(app);
   const storage = getStorage(app);
@@ -81,8 +94,30 @@ function MessageItem({ groupId, msg, lastSeen }: { groupId: string; msg: Msg; la
     e.currentTarget.reset();
   }
 
+  async function deleteMessage() {
+    if (!msg.id) return;
+    if (!(currentUid && (msg.uid === currentUid || canDelete))) return;
+    try {
+      await deleteDoc(doc(db, `groups/${groupId}/messages/${msg.id}`));
+    } catch {
+      // eslint-disable-next-line no-alert
+      alert("Failed to delete message (check rules).");
+    }
+  }
+
+  async function deleteReply(rid: string, ruid: string) {
+    if (!msg.id) return;
+    if (!(currentUid && (ruid === currentUid || canDelete))) return;
+    try {
+      await deleteDoc(doc(db, `groups/${groupId}/messages/${msg.id}/replies/${rid}`));
+    } catch {
+      // eslint-disable-next-line no-alert
+      alert("Failed to delete reply (check rules).");
+    }
+  }
+
   return (
-    <div className="p-2 text-sm border-b border-border">
+    <div className="relative p-2 text-sm border-b border-border">
       <div>
         <span className="font-medium">{msg.displayName || msg.uid.slice(0, 6)}</span>: {msg.text}
         {msg.fileUrl && (
@@ -98,6 +133,16 @@ function MessageItem({ groupId, msg, lastSeen }: { groupId: string; msg: Msg; la
           </div>
         )}
       </div>
+      {(currentUid === msg.uid || canDelete) && (
+        <button
+          type="button"
+          onClick={() => void deleteMessage()}
+          className="absolute -top-2 -right-2 text-[10px] rounded-full border border-border bg-background px-1.5 py-0.5 hover:bg-surface"
+          title="Delete message"
+        >
+          ×
+        </button>
+      )}
       <button
         onClick={() => setShowThread((v) => !v)}
         className="mt-1 text-xs text-accent"
@@ -123,7 +168,7 @@ function MessageItem({ groupId, msg, lastSeen }: { groupId: string; msg: Msg; la
             <div className="p-1 text-xs text-text2">No replies yet.</div>
           )}
           {replies.map((r) => (
-            <div key={r.id} className="p-1 text-xs border-b border-border">
+            <div key={r.id} className="relative p-1 text-xs border-b border-border">
               <span className="font-medium">{r.displayName || r.uid.slice(0, 6)}</span>: {r.text}
               {r.fileUrl && (
                 <div>
@@ -136,6 +181,16 @@ function MessageItem({ groupId, msg, lastSeen }: { groupId: string; msg: Msg; la
                     {r.fileName || "Attachment"}
                   </a>
                 </div>
+              )}
+              {(currentUid === r.uid || canDelete) && (
+                <button
+                  type="button"
+                  onClick={() => void deleteReply(r.id!, r.uid)}
+                  className="absolute -top-1 -right-1 text-[8px] rounded-full border border-border bg-background px-1 py-0 hover:bg-surface"
+                  title="Delete reply"
+                >
+                  ×
+                </button>
               )}
             </div>
           ))}
@@ -173,6 +228,30 @@ export default function GroupChat({ groupId }: { groupId: string }) {
     const stored = localStorage.getItem(`groupChatLastSeen_${groupId}`);
     return stored ? parseInt(stored, 10) : 0;
   });
+  const [canDeleteAll, setCanDeleteAll] = useState(false);
+
+  useEffect(() => {
+    async function check() {
+      const uid = auth.currentUser?.uid;
+      if (!uid) {
+        setCanDeleteAll(false);
+        return;
+      }
+      try {
+        const superSnap = await getDoc(doc(db, "users", uid));
+        const isSuper = (superSnap.data() as any)?.isSuperAdmin === true;
+        if (isSuper) {
+          setCanDeleteAll(true);
+          return;
+        }
+        const adminSnap = await getDoc(doc(db, `groups/${groupId}/groupAdmins/${uid}`));
+        setCanDeleteAll(adminSnap.exists());
+      } catch {
+        setCanDeleteAll(false);
+      }
+    }
+    check();
+  }, [auth.currentUser?.uid, db, groupId]);
 
   useEffect(() => {
     return () => {
@@ -241,7 +320,14 @@ export default function GroupChat({ groupId }: { groupId: string }) {
           <div className="p-3 text-sm text-text2">No messages yet.</div>
         )}
         {msgs.map((m) => (
-          <MessageItem key={m.id} groupId={groupId} msg={m} lastSeen={lastSeen} />
+          <MessageItem
+            key={m.id}
+            groupId={groupId}
+            msg={m}
+            lastSeen={lastSeen}
+            currentUid={auth.currentUser?.uid || null}
+            canDelete={canDeleteAll}
+          />
         ))}
         <div ref={bottomRef} />
       </div>
