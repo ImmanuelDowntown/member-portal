@@ -92,7 +92,7 @@ export default function App() {
             <Route path="/forum/thread/:id" element={<AuthRoute><OnboardRoute><ForumThread /></OnboardRoute></AuthRoute>} />
             <Route path="/sunday-resources" element={<AuthRoute><OnboardRoute><SundayResources /></OnboardRoute></AuthRoute>} />
             <Route path="/pastor/questions" element={<AuthRoute><OnboardRoute><PastorQuestions /></OnboardRoute></AuthRoute>} />
-            <Route path="/activity" element={<AuthRoute><OnboardRoute><UserActivity /></OnboardRoute></AuthRoute>} />
+            <Route path="/activity" element={<AdminRoute><OnboardRoute><UserActivity /></OnboardRoute></AdminRoute>} />
 
             {/* Groups Explore + Detail */}
             <Route path="/groups/explore" element={<AuthRoute><OnboardRoute><GroupsExplore /></OnboardRoute></AuthRoute>} />

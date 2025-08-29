@@ -4,7 +4,7 @@ import { app } from "@/lib/firebase"; // change to ../lib/firebase if you don't 
 import {
   getFirestore,
   collection,
-  getDocs,
+  onSnapshot,
   doc,
   setDoc,
   deleteDoc,
@@ -29,31 +29,23 @@ export default function AdminGroupRequests() {
   const groupId = slug as string;
 
   useEffect(() => {
-    let active = true;
-    async function load() {
-      if (!groupId) return;
-      setLoading(true);
-      try {
-        // load group title
-        const gref = doc(db, "groups", groupId);
-        const gsnap = await getDoc(gref);
-        setGroupName((gsnap.exists() && (gsnap.data() as any).name) || humanizeSlug(groupId));
+    if (!groupId) return;
+    setLoading(true);
 
-        // list pending requests
-        const reqCol = collection(db, `groups/${groupId}/membershipRequests`);
-        const snap = await getDocs(reqCol);
-        if (!active) return;
-        const list: Pending[] = [];
-        snap.forEach((d) =>
-          list.push({ uid: d.id, ...(d.data() as any) })
-        );
-        setPending(list);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-    return () => { active = false; };
+    // load group title once
+    getDoc(doc(db, "groups", groupId)).then((gsnap) => {
+      setGroupName((gsnap.exists() && (gsnap.data() as any).name) || humanizeSlug(groupId));
+    });
+
+    // subscribe to pending requests
+    const reqCol = collection(db, `groups/${groupId}/membershipRequests`);
+    const unsub = onSnapshot(reqCol, (snap) => {
+      const list: Pending[] = [];
+      snap.forEach((d) => list.push({ uid: d.id, ...(d.data() as any) }));
+      setPending(list);
+      setLoading(false);
+    });
+    return () => unsub();
   }, [db, groupId]);
 
   async function approve(p: Pending) {

@@ -255,6 +255,17 @@ service cloud.firestore {
       allow create, update, delete: if isSuperAdmin();
     }
 
+    // Pastor questions
+    match /pastorQuestions/{questionId} {
+      // Signed-in users can submit questions
+      allow create: if isSignedIn();
+      // Pastor (recipient) or super admin can read and mark as read
+      allow get, list, update: if isSuperAdmin() ||
+        (isSignedIn() && resource.data.to == uid());
+      // Only super admins may delete
+      allow delete: if isSuperAdmin();
+    }
+
     // >>> INSERTED: Global Direct Messages (new, does not affect other rules) <<<
     // Threads: /dmThreads/{pairId}
     match /dmThreads/{pairId} {
