@@ -4,22 +4,48 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
       
-  // Activity log: users can create and read their own activity documents; super admins may read or delete any.
-  match /users/{uid}/activity/{docId} {
-    // Create only if the user is writing to their own activity and the payload matches the schema.
-    allow create: if request.auth != null
-                  && request.auth.uid == uid
-                  && request.resource.data.keys().hasOnly(['type','resourcePath','title','createdAt'])
-                  && request.resource.data.type == 'resource_access'
-                  && request.resource.data.resourcePath is string
-                  && (request.resource.data.title == null || request.resource.data.title is string)
-                  && request.resource.data.createdAt is timestamp;
-    // Read your own activity; super admins can read all.
-    allow get, list: if request.auth != null && (request.auth.uid == uid || isSuperAdmin());
-    // Super admins may delete reviewed activity; no updates allowed.
-    allow delete: if isSuperAdmin();
-    allow update: if false;
-  }
+  
+// Helper predicates used across rules
+function isSignedIn() {
+  return request.auth != null;
+}
+function isOwner(uid) {
+  return isSignedIn() && request.auth.uid == uid;
+}
+// Super admin is conveyed via a custom claim: request.auth.token.superAdmin == true
+function isSuper() {
+  return isSignedIn() && request.auth.token.superAdmin == true;
+}
+// Activity log: users can create and read their own activity documents; super admins may read or delete any.
+  
+// Activity log: users can create/read their own entries; only limited review fields are updatable.
+match /users/{uid}/activity/{docId} {
+  // Strict create schema for client-logged access events
+  allow create: if isOwner(uid)
+                && request.resource.data.keys().hasOnly(['type','resourcePath','title','createdAt'])
+                && request.resource.data.type == 'resource_access'
+                && request.resource.data.resourcePath is string
+                && (request.resource.data.title == null || request.resource.data.title is string)
+                && request.resource.data.createdAt is timestamp;
+
+  // Owner and super admin can read
+  allow get, list: if isOwner(uid) || isSuper();
+
+  // Allow ONLY review fields to change; core fields must remain identical
+  allow update: if (isOwner(uid) || isSuper())
+                && request.resource.data.keys()
+                     .hasOnly(['type','resourcePath','title','createdAt','reviewed','reviewedAt','reviewedBy'])
+                && request.resource.data.type == resource.data.type
+                && request.resource.data.resourcePath == resource.data.resourcePath
+                && request.resource.data.title == resource.data.title
+                && request.resource.data.createdAt == resource.data.createdAt
+                && ( !('reviewed' in request.resource.data) || request.resource.data.reviewed in [true, false] )
+                && ( !('reviewedAt' in request.resource.data) || request.resource.data.reviewedAt is timestamp )
+                && ( !('reviewedBy' in request.resource.data) || request.resource.data.reviewedBy is string );
+
+  // Keep activity immutable w.r.t deletion
+  allow delete: if false;
+}
 // ---------- Helper functions ----------
     function isSignedIn() {
       return request.auth != null;
