@@ -165,7 +165,11 @@ export default function AdminConsole() {
       unsubs.push(
         onSnapshot(
           qQ,
-          (qs) => !cancelled && setQuestionsAlert(qs.size > 0),
+          (qs) =>
+            !cancelled &&
+            setQuestionsAlert(
+              qs.docs.some((d) => (d.data() as any).read !== true)
+            ),
           () => !cancelled && setQuestionsAlert(false)
         )
       );

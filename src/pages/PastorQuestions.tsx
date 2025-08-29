@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, orderBy, query, where, type DocumentData } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+  where,
+  type DocumentData,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -9,6 +18,7 @@ type Question = {
   from: string;
   displayName?: string;
   createdAt?: unknown;
+  read?: boolean;
 };
 
 const pastorUid = import.meta.env.VITE_PASTOR_UID as string | undefined;
@@ -16,6 +26,14 @@ const pastorUid = import.meta.env.VITE_PASTOR_UID as string | undefined;
 export default function PastorQuestions() {
   const { user } = useAuth();
   const [questions, setQuestions] = useState<Question[] | null>(null);
+
+  const handleReadChange = async (id: string, read: boolean) => {
+    try {
+      await updateDoc(doc(db, "pastorQuestions", id), { read });
+    } catch (err) {
+      console.error("Failed to update question", err);
+    }
+  };
 
   useEffect(() => {
     if (!user || user.uid !== pastorUid) return;
@@ -52,9 +70,20 @@ export default function PastorQuestions() {
         ) : (
           <ul className="space-y-4">
             {questions.map((q) => (
-              <li key={q.id} className="rounded-md border border-border bg-muted p-4">
-                <p className="font-medium">{q.displayName || "Anonymous"}</p>
-                <p className="mt-1 whitespace-pre-wrap">{q.text}</p>
+              <li
+                key={q.id}
+                className="flex gap-3 rounded-md border border-border bg-muted p-4"
+              >
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={q.read === true}
+                  onChange={(e) => handleReadChange(q.id, e.target.checked)}
+                />
+                <div className={q.read ? "opacity-50" : undefined}>
+                  <p className="font-medium">{q.displayName || "Anonymous"}</p>
+                  <p className="mt-1 whitespace-pre-wrap">{q.text}</p>
+                </div>
               </li>
             ))}
           </ul>

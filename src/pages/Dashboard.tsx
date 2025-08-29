@@ -221,7 +221,12 @@ export default function Dashboard() {
       unsubs.push(
         onSnapshot(
           qQ,
-          (qs) => { questionsAnyRef.current = qs.size > 0; updateFlag(); },
+          (qs) => {
+            questionsAnyRef.current = qs.docs.some(
+              (d) => (d.data() as any).read !== true
+            );
+            updateFlag();
+          },
           () => { questionsAnyRef.current = false; updateFlag(); }
         )
       );
@@ -300,13 +305,18 @@ export default function Dashboard() {
           <div>
             <h2 className="text-xl font-semibold text-accent">Admin Tools</h2>
             <p className="text-sm text-text2">
-              {needsAttention ? "Attention needed: pending requests or new users." : "You have admin privileges."}
+              {needsAttention
+                ? "Attention needed: pending requests, new users, or questions."
+                : "You have admin privileges."}
             </p>
           </div>
           <Link
             to="/admin"
             className={adminBtnClass}
-            title={needsAttention ? "Pending requests or new users need review" : "Open Admin Console"}
+            title=
+              {needsAttention
+                ? "Pending requests, new users, or questions need review"
+                : "Open Admin Console"}
           >
             Admin Console
           </Link>
