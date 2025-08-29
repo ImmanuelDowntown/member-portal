@@ -30,7 +30,7 @@ import SundayResources from "@/pages/SundayResources";
 import Forum from "@/pages/Forum";
 import ForumThread from "@/pages/ForumThread";
 import PastorQuestions from "@/pages/PastorQuestions";
-import UserActivity from "@/pages/UserActivity";
+import AdminActivity from "@/pages/Admin/AdminActivity";
 
 
 // Admin Pages
@@ -92,7 +92,16 @@ export default function App() {
             <Route path="/forum/thread/:id" element={<AuthRoute><OnboardRoute><ForumThread /></OnboardRoute></AuthRoute>} />
             <Route path="/sunday-resources" element={<AuthRoute><OnboardRoute><SundayResources /></OnboardRoute></AuthRoute>} />
             <Route path="/pastor/questions" element={<AuthRoute><OnboardRoute><PastorQuestions /></OnboardRoute></AuthRoute>} />
-            <Route path="/activity" element={<AdminRoute><OnboardRoute><UserActivity /></OnboardRoute></AdminRoute>} />
+            <Route
+              path="/admin/activity"
+              element={
+                <AdminRoute>
+                  <OnboardRoute>
+                    <AdminActivity />
+                  </OnboardRoute>
+                </AdminRoute>
+              }
+            />
 
             {/* Groups Explore + Detail */}
             <Route path="/groups/explore" element={<AuthRoute><OnboardRoute><GroupsExplore /></OnboardRoute></AuthRoute>} />

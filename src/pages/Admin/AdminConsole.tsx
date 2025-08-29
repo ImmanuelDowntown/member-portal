@@ -222,7 +222,7 @@ export default function AdminConsole() {
           <Link to="/pastor/questions" className={cardClass(questionsAlert)}>
             Questions
           </Link>
-          <Link to="/activity" className={cardClass(activityAlert)}>
+          <Link to="/admin/activity" className={cardClass(activityAlert)}>
             Activity
           </Link>
         </div>

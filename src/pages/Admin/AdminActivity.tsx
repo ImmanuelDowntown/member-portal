@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
+import { Link } from "react-router-dom";
 import { auth, db } from "@/lib/firebase";
 
 type Activity = {
@@ -10,7 +18,7 @@ type Activity = {
   createdAt?: any;
 };
 
-export default function UserActivity() {
+export default function AdminActivity() {
   const uid = auth.currentUser?.uid;
   const [items, setItems] = useState<Activity[]>([]);
 
@@ -26,6 +34,16 @@ export default function UserActivity() {
     return unsub;
   }, [uid]);
 
+  async function handleMarkReviewed() {
+    if (!uid) return;
+    try {
+      const snap = await getDocs(collection(db, `users/${uid}/activity`));
+      await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+    } catch {
+      alert("Failed to mark activity as reviewed.");
+    }
+  }
+
   if (!uid) {
     return (
       <div className="container py-10">
@@ -36,8 +54,21 @@ export default function UserActivity() {
 
   return (
     <div className="container py-10">
-      <h1 className="text-2xl font-semibold text-accent">Your Activity</h1>
-      <ul className="mt-4 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white/70">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-accent">Activity Log</h1>
+        <Link to="/admin" className="text-sm text-slate-700 underline">
+          Back to Admin Console
+        </Link>
+      </div>
+      {items.length > 0 && (
+        <button
+          onClick={handleMarkReviewed}
+          className="mb-4 rounded bg-slate-900 px-3 py-1 text-sm font-medium text-white"
+        >
+          Activity Log Reviewed
+        </button>
+      )}
+      <ul className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white/70">
         {items.map((a) => (
           <li key={a.id} className="p-4 text-sm">
             {a.type === "resource_access" ? (
