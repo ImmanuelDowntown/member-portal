@@ -1,4 +1,4 @@
-simport { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
